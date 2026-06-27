@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>River CRM</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #1D9E75; --primary-dark: #167d5c; --danger: #E24B4A; --danger-dark: #c03a39;
+      --bg: #F5F6F8; --card: #fff; --border: #E5E7EB; --text: #1F2937; --text2: #6B7280;
+      --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    html { font-size: 15px; }
+    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+    button { touch-action: manipulation; cursor: pointer; font-family: inherit; }
+    input, select, textarea { font-family: inherit; font-size: 1rem; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+
+    /* Loading */
+    #loadingOverlay { position: fixed; inset: 0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; transition: opacity .3s; }
+    #loadingOverlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Login */
+    #loginPage { position: fixed; inset: 0; background: linear-gradient(135deg, #E1F5EE 0%, #E6F1FB 50%, #EEEDFE 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .loginCard { background: #fff; padding: 40px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.1); width: 100%; max-width: 400px; margin: 20px; }
+    .loginCard h1 { font-size: 1.8rem; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    .loginCard p { color: var(--text2); margin-bottom: 24px; font-size: .95rem; }
+    .loginCard input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 16px; font-size: 16px; }
+    .loginCard button { width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-size: 1rem; font-weight: 600; transition: background .2s; }
+    .loginCard button:hover { background: var(--primary-dark); }
+    .loginCard button:disabled { opacity: .6; cursor: not-allowed; }
+    .loginError { color: var(--danger); font-size: .875rem; margin-top: -8px; margin-bottom: 12px; display: none; }
+
+    /* App */
+    #app { display: none; min-height: 100vh; }
+    #app.active { display: block; }
+
+    /* Topbar */
+    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+    .topbarLeft { display: flex; align-items: center; gap: 20px; }
+    .logo { display: flex; align-items: center; gap: 8px; font-size: 1.2rem; font-weight: 700; color: var(--text); text-decoration: none; }
+    .logo span { font-size: 1.4rem; }
+    .navTabs { display: flex; gap: 4px; }
+    .navTab { padding: 8px 16px; border-radius: 8px; font-size: .875rem; font-weight: 500; color: var(--text2); cursor: pointer; border: none; background: none; transition: all .15s; }
+    .navTab:hover { background: #F3F4F6; color: var(--text); }
+    .navTab.active { background: #E1F5EE; color: #085041; }
+    .topbarRight { display: flex; align-items: center; gap: 12px; }
+    .liveBadge { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--text2); background: #F3F4F6; padding: 5px 12px; border-radius: 20px; }
+    .liveDot { width: 7px; height: 7px; background: #E24B4A; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .userPill { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+    .userAvatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #378ADD); color: #fff; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 600; }
+    .signOutBtn { padding: 6px 14px; font-size: .8rem; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text2); cursor: pointer; }
+    .signOutBtn:hover { background: #F3F4F6; color: var(--danger); border-color: var(--danger); }
+
+    /* Pages */
+    .page { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* Metrics */
+    .metricsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .metricCard { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .metricTitle { font-size: .8rem; color: var(--text2); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 8px; }
+    .metricValue { font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
+    .metricSub { font-size: .8rem; color: var(--text2); }
+    .metricBar { height: 6px; background: #E5E7EB; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .metricBarFill { height: 100%; border-radius: 3px; transition: width .5s ease; }
+
+    /* Pipeline Tabs */
+    .pipelineBar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; background: var(--card); padding: 10px; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow-x: auto; }
+    .pipelineTab { padding: 8px 14px; border-radius: 8px; font-size: .85rem; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--text2); display: flex; align-items: center; gap: 6px; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
+    .pipelineTab:hover { background: #F3F4F6; }
+    .pipelineTab.active { background: #E1F5EE; color: #085041; }
+    .pipelineCount { font-size: .75rem; background: #E5E7EB; color: var(--text2); padding: 1px 7px; border-radius: 10px; font-weight: 600; }
+    .pipelineTab.active .pipelineCount { background: #085041; color: #fff; }
+
+    /* Toolbar */
+    .toolbar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .searchWrap { flex: 1; min-width: 200px; position: relative; }
+    .searchWrap input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: .9rem; }
+    .searchWrap::before { content: "🔍"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: .85rem; opacity: .5; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: .875rem; font-weight: 500; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; white-space: nowrap; }
+    .btnPrimary { background: var(--primary); color: #fff; }
+    .btnPrimary:hover { background: var(--primary-dark); }
+    .btnPrimary:disabled { opacity: .5; cursor: not-allowed; }
+    .btnDanger { background: var(--danger); color: #fff; }
+    .btnDanger:hover { background: var(--danger-dark); }
+    .btnSecondary { background: #F3F4F6; color: var(--text); border: 1px solid var(--border); }
+    .btnSecondary:hover { background: #E5E7EB; }
+
+    /* Leads Table */
+    .tableWrap { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; overflow-x: auto; }
+    .leadsTable { width: 100%; border-collapse: collapse; min-width: 900px; }
+    .leadsTable thead { background: #F9FAFB; }
+    .leadsTable th { padding: 12px 16px; text-align: left; font-size: .75rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; cursor: pointer; user-select: none; transition: color .15s; position: relative; }
+    .leadsTable th:hover { color: var(--text); background: #f0f0f0; }
+    .leadsTable th .sortArrow { margin-left: 4px; opacity: 0.4; font-size: 0.7rem; display: inline-block; }
+    .leadsTable th.sort-active .sortArrow { opacity: 1; color: var(--primary); }
+    .leadsTable th.sort-active { color: var(--primary); background: #E1F5EE; }
+    .leadsTable td { padding: 14px 16px; border-top: 1px solid var(--border); font-size: .9rem; vertical-align: top; }
+    .leadsTable tbody tr { transition: background .1s; }
+    .leadsTable tbody tr:hover { background: #FAFBFC; }
+    .leadName { font-weight: 600; font-size: .92rem; }
+    .leadPhone { font-size: .82rem; color: var(--text2); }
+    .leadLocation { font-size: .85rem; }
+    .leadAddr { font-size: .78rem; color: var(--text2); }
+    .leadCustomCol { font-size: .82rem; color: var(--text); }
+
+    /* Status Dropdown */
+    .statusWrap { position: relative; }
+    .statusPill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; font-size: .82rem; font-weight: 500; cursor: pointer; white-space: nowrap; transition: transform .1s; user-select: none; }
+    .statusPill:hover { transform: scale(1.03); }
+    .statusDot { width: 7px; height: 7px; border-radius: 50%; }
+    .statusDropdown { position: absolute; top: calc(100% + 4px); left: 0; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.15); z-index: 50; min-width: 180px; max-height: 300px; overflow-y: auto; padding: 6px; display: none; }
+    .statusDropdown.show { display: block; }
+    .statusOption { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: .85rem; transition: background .1s; border: none; background: none; width: 100%; }
+    .statusOption:hover { background: #F3F4F6; }
+
+    .actionsCell { display: flex; gap: 6px; }
+    .iconBtn { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .8rem; transition: all .1s; }
+    .iconBtn:hover { background: #F3F4F6; }
+    .iconBtn.delete:hover { background: #FCEBEB; border-color: var(--danger); color: var(--danger); }
+
+    .emptyState { text-align: center; padding: 60px 20px; color: var(--text2); }
+    .emptyStateIcon { font-size: 3rem; margin-bottom: 12px; opacity: .4; }
+
+    /* Settings */
+    .settingsGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .settingsCard { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .settingsCard h3 { font-size: 1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .formGroup { margin-bottom: 16px; }
+    .formGroup label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: 6px; color: var(--text); }
+    .formGroup input, .formGroup select, .formGroup textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: .9rem; }
+    .formGroup textarea { resize: vertical; min-height: 80px; }
+    .formRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .usersTable { width: 100%; border-collapse: collapse; }
+    .usersTable th, .usersTable td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: .88rem; }
+    .usersTable th { font-weight: 600; color: var(--text2); font-size: .8rem; text-transform: uppercase; }
+    .roleBadge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 12px; font-size: .78rem; font-weight: 500; }
+    .roleAdmin { background: #E6F1FB; color: #0C447C; }
+    .roleUser { background: #F3F4F6; color: var(--text2); }
+    .roleOwner { background: #FAEEDA; color: #633806; }
+
+    /* Modal */
+    .modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); backdrop-filter: blur(3px); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+    .modalOverlay.active { display: flex; }
+    .modalSheet { background: var(--card); width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 24px; transform: translateY(100%); transition: transform .3s ease; -webkit-overflow-scrolling: touch; }
+    .modalOverlay.active .modalSheet { transform: translateY(0); }
+    .modalHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modalHeader h2 { font-size: 1.2rem; }
+    .modalClose { width: 32px; height: 32px; border-radius: 50%; border: none; background: #F3F4F6; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
+    .modalClose:hover { background: #E5E7EB; }
+    .modalBody { display: grid; gap: 16px; }
+    .modalFooter { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+    /* Toast */
+    .toastWrap { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); z-index: 300; transition: transform .4s cubic-bezier(.175,.885,.32,1.275); }
+    .toastWrap.show { transform: translateX(-50%) translateY(0); }
+    .toast { padding: 12px 24px; border-radius: 10px; color: #fff; font-size: .9rem; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.15); }
+    .toastSuccess { background: var(--primary); }
+    .toastError { background: var(--danger); }
+
+    /* Toggle */
+    .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .toggle input { display: none; }
+    .toggleTrack { width: 44px; height: 24px; background: #D1D5DB; border-radius: 12px; position: relative; transition: background .2s; }
+    .toggle input:checked + .toggleTrack { background: var(--primary); }
+    .toggleThumb { width: 20px; height: 20px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+    .toggle input:checked + .toggleTrack .toggleThumb { transform: translateX(20px); }
+
+    /* Responsive */
+    @media (min-width: 640px) {
+      .modalOverlay { align-items: center; }
+      .modalSheet { border-radius: var(--radius); transform: translateY(-20px); opacity: 0; transition: all .3s ease; }
+      .modalOverlay.active .modalSheet { transform: translateY(0); opacity: 1; }
+    }
+    @media (max-width: 768px) {
+      .metricsGrid { grid-template-columns: repeat(2, 1fr); }
+      .metricsGrid[style*="5"] { grid-template-columns: repeat(3, 1fr); }
+      .settingsGrid { grid-template-columns: 1fr; }
+      .topbar { padding: 0 12px; }
+      .navTab { padding: 6px 10px; font-size: .8rem; }
+    }
+    @media (max-width: 480px) {
+      html { font-size: 14px; }
+      .metricsGrid { grid-template-columns: 1fr; }
+      .metricsGrid[style*="5"] { grid-template-columns: repeat(2, 1fr); }
+      .topbarRight .userPill { display: none; }
+      .logoText { display: none; }
+      .pipelineBar { gap: 4px; padding: 8px; }
+      .pipelineTab { padding: 6px 10px; font-size: .78rem; }
+      .loginCard { padding: 28px 20px; margin: 12px; }
+      input, select, textarea { font-size: 16px !important; }
+    }
+
+    .sectionTitle { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; }
+    .helpText { font-size: .8rem; color: var(--text2); margin-top: 4px; }
+    .dangerZone { border: 1px solid var(--danger); border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .dangerZoneTitle { color: var(--danger); font-weight: 600; font-size: .85rem; margin-bottom: 8px; }
+
+    .chartRow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .chartLabel { font-size: .82rem; width: 90px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chartBarWrap { flex: 1; height: 24px; background: #F3F4F6; border-radius: 4px; overflow: hidden; position: relative; }
+    .chartBarFill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+    .chartValue { font-size: .8rem; color: var(--text2); width: 30px; text-align: right; }
+
+    .statusList { display: flex; flex-direction: column; gap: 8px; }
+    .statusItem { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+    .colorDot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+    .customColItem { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: #FAFBFC; }
+    .customColItem span { flex: 1; font-size: .88rem; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <p style="margin-top:16px;color:#6B7280;font-size:.9rem;">Loading River CRM...</p>
+</div>
+
+<div id="loginPage">
+  <div class="loginCard">
+    <h1><span>🌿</span> River CRM</h1>
+    <p>Enter your email to access the CRM</p>
+    <div class="loginError" id="loginError"></div>
+    <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+    <button id="loginBtn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbarLeft">
+      <a href="#" class="logo" onclick="showPage('dashboard');return false;"><span>🌿</span><span class="logoText">River CRM</span></a>
+      <div class="navTabs">
+        <button class="navTab active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="navTab" data-page="analytics" onclick="showPage('analytics')">Analytics</button>
+        <button class="navTab" id="settingsTabBtn" data-page="settings" onclick="showPage('settings')" style="display:none;">Settings</button>
+      </div>
+    </div>
+    <div class="topbarRight">
+      <div class="liveBadge"><div class="liveDot"></div><span id="liveText">Live · 0 leads</span></div>
+      <div class="userPill"><div class="userAvatar" id="userAvatar"></div><span id="userName"></span></div>
+      <button class="signOutBtn" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="dashboardPage">
+    <div class="metricsGrid">
+      <div class="metricCard">
+        <div class="metricTitle">Won Rate</div>
+        <div class="metricValue" id="wonRateVal">0%</div>
+        <div class="metricSub" id="wonRateSub">0 won out of 0 leads</div>
+        <div class="metricBar"><div class="metricBarFill" id="wonRateBar" style="width:0%;background:var(--primary)"></div></div>
+      </div>
+      <div class="metricCard">
+        <div class="metricTitle">Visit Scheduled Rate</div>
+        <div class="metricValue" id="visitRateVal">0%</div>
+        <div class="metricSub" id="visitRateSub">0 of 0 leads scheduled</div>
+        <div class="metricBar"><div class="metricBarFill" id="visitRateBar" style="width:0%;background:#BA7517"></div></div>
+        <div class="metricSub" id="visitDetail" style="margin-top:4px;font-size:.75rem;"></div>
+      </div>
+      <div class="metricCard">
+        <div class="metricTitle">Top Locations</div>
+        <div id="topLocations"></div>
+      </div>
+      <div class="metricCard">
+        <div class="metricTitle">Garden Demand</div>
+        <div id="gardenDemand"></div>
+      </div>
+    </div>
+
+    <div class="pipelineBar" id="pipelineBar"></div>
+
+    <div class="toolbar">
+      <div class="searchWrap"><input type="text" id="searchInput" placeholder="Search leads..." oninput="onSearch()"></div>
+      <button class="btn btnPrimary" onclick="openAddLeadModal()">+ Add Lead</button>
+      <button class="btn btnSecondary" onclick="openScheduleModal()">📅 Schedule Visit</button>
+    </div>
+
+    <div class="tableWrap">
+      <table class="leadsTable" id="leadsTable">
+        <thead><tr id="leadsTableHead">
+          <th onclick="toggleSort('date')">Date <span class="sortArrow" id="sort_date">↕</span></th>
+          <th onclick="toggleSort('name')">Name <span class="sortArrow" id="sort_name">↕</span></th>
+          <th onclick="toggleSort('phone')">Phone <span class="sortArrow" id="sort_phone">↕</span></th>
+          <th onclick="toggleSort('garden')">Garden <span class="sortArrow" id="sort_garden">↕</span></th>
+          <th onclick="toggleSort('city')">Location <span class="sortArrow" id="sort_city">↕</span></th>
+          <th onclick="toggleSort('status')">Status <span class="sortArrow" id="sort_status">↕</span></th>
+          <th>Visit Date</th>
+          <th>Actions</th>
+        </tr></thead>
+        <tbody id="leadsTableBody"></tbody>
+      </table>
+      <div class="emptyState" id="tableEmpty" style="display:none;"><div class="emptyStateIcon">📭</div><p>No leads found</p></div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="page" id="analyticsPage">
+    <div class="metricsGrid" style="grid-template-columns: repeat(5, 1fr);">
+      <div class="metricCard"><div class="metricTitle">Total Leads</div><div class="metricValue" id="a_totalLeads">0</div></div>
+      <div class="metricCard"><div class="metricTitle">New This Week</div><div class="metricValue" id="a_newWeek">0</div></div>
+      <div class="metricCard"><div class="metricTitle">Won Rate</div><div class="metricValue" id="a_wonRate">0%</div><div class="metricBar"><div class="metricBarFill" id="a_wonBar" style="width:0%;background:var(--primary)"></div></div></div>
+      <div class="metricCard"><div class="metricTitle">Visit Rate</div><div class="metricValue" id="a_visitRate">0%</div><div class="metricBar"><div class="metricBarFill" id="a_visitBar" style="width:0%;background:#BA7517"></div></div></div>
+      <div class="metricCard"><div class="metricTitle">Lost Rate</div><div class="metricValue" id="a_lostRate">0%</div><div class="metricBar"><div class="metricBarFill" id="a_lostBar" style="width:0%;background:var(--danger)"></div></div></div>
+    </div>
+
+    <div class="settingsGrid">
+      <div class="settingsCard">
+        <h3>📊 Pipeline Status Breakdown</h3>
+        <div id="a_statusChart"></div>
+      </div>
+      <div class="settingsCard">
+        <h3>🌱 Garden Size Distribution</h3>
+        <div id="a_gardenChart"></div>
+      </div>
+      <div class="settingsCard">
+        <h3>📍 Location (City) Breakdown</h3>
+        <div id="a_cityChart"></div>
+      </div>
+      <div class="settingsCard">
+        <h3>🔗 Lead Source Analysis</h3>
+        <div id="a_sourceChart"></div>
+      </div>
+      <div class="settingsCard" id="a_customCard1" style="display:none;">
+        <h3 id="a_customTitle1">Custom Column</h3>
+        <div id="a_customChart1"></div>
+      </div>
+      <div class="settingsCard" id="a_customCard2" style="display:none;">
+        <h3 id="a_customTitle2">Custom Column</h3>
+        <div id="a_customChart2"></div>
+      </div>
+      <div class="settingsCard">
+        <h3>📅 Leads Over Time</h3>
+        <div id="a_timelineChart"></div>
+      </div>
+      <div class="settingsCard">
+        <h3>🔽 Conversion Funnel</h3>
+        <div id="a_funnelChart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="settingsPage">
+    <div class="settingsGrid">
+      <div class="settingsCard">
+        <h3>👥 User Access Management</h3>
+        <div id="usersList"></div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+          <div class="formRow"><input type="email" id="newUserEmail" placeholder="Email address"><select id="newUserRole"><option value="user">User</option><option value="admin">Admin</option></select></div>
+          <button class="btn btnPrimary" style="margin-top:10px;" onclick="addUser()">Add User</button>
+        </div>
+      </div>
+
+      <div class="settingsCard">
+        <h3>📊 Google Sheets Config</h3>
+        <div class="formGroup"><label>API Key</label><input type="password" id="sheetApiKey" placeholder="AIzaSy..."></div>
+        <div class="formGroup"><label>Sheet ID or URL</label><input type="text" id="sheetId" placeholder="Paste full URL or Sheet ID" onblur="extractSheetId()"><div class="helpText">Paste the full Google Sheets URL</div></div>
+        <div class="formGroup"><label>Tab Name</label><input type="text" id="sheetTab" placeholder="Sheet1"></div>
+        <div class="formGroup"><label style="display:flex;align-items:center;gap:8px;"><span>Auto-sync</span><label class="toggle"><input type="checkbox" id="autoSyncToggle" onchange="toggleAutoSync()"><span class="toggleTrack"><span class="toggleThumb"></span></span></label></label></div>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;"><button class="btn btnPrimary" id="importBtn" onclick="runManualImport()">Import New Leads</button><button class="btn btnSecondary" onclick="syncColumnsFromSheet()">🔄 Sync Columns</button><button class="btn btnDanger" onclick="runReplaceAll()">Replace All &amp; Re-import</button></div>
+      </div>
+
+      <div class="settingsCard"><h3>📝 Column Mapping</h3><div id="colMapInputs"></div></div>
+
+      <div class="settingsCard">
+        <h3>📋 Dashboard Visible Columns</h3>
+        <div class="helpText" style="margin-bottom:12px;">Check which columns to show on the dashboard leads table.</div>
+        <div id="visibleColsList"></div>
+      </div>
+
+      <div class="settingsCard">
+        <h3>➕ Custom Data Columns</h3>
+        <div class="helpText" style="margin-bottom:12px;">Add extra columns from your Google Sheet (like Platform, Source, Budget). These appear on the table AND in the add/edit forms.</div>
+        <div id="customColumnsList"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;"><input type="text" id="newCustomCol" placeholder="Column name (e.g. Platform)" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;"><button class="btn btnSecondary" onclick="addCustomColumn()">Add</button></div>
+      </div>
+
+      <div class="settingsCard">
+        <h3>🎯 Pipeline Statuses</h3>
+        <div class="statusList" id="statusList"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;"><input type="text" id="newStatusName" placeholder="Status name" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;"><input type="color" id="newStatusColor" value="#1D9E75" style="width:40px;height:36px;border:1px solid var(--border);border-radius:8px;cursor:pointer;"><button class="btn btnSecondary" onclick="addStatus()">Add</button></div>
+      </div>
+
+      <div class="settingsCard">
+        <h3>🌱 Garden Size Options</h3>
+        <div id="gardenSizesList"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;"><input type="text" id="newGardenSize" placeholder="New garden size" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;"><button class="btn btnSecondary" onclick="addGardenSize()">Add</button></div>
+      </div>
+
+      <div class="settingsCard"><h3>🧾 Lead Form Fields</h3><div id="formFieldsList"></div></div>
+    </div>
+    <div style="max-width:200px;margin-top:20px;"><button class="btn btnPrimary" style="width:100%;" onclick="saveAllSettings()">💾 Save Settings</button></div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="modalOverlay" onclick="closeModalOnBackdrop(event)">
+  <div class="modalSheet" id="modalSheet" onclick="event.stopPropagation()">
+    <div class="modalHeader"><h2 id="modalTitle">Modal</h2><button class="modalClose" onclick="closeModal()">&times;</button></div>
+    <div class="modalBody" id="modalBody"></div>
+    <div class="modalFooter" id="modalFooter"></div>
+  </div>
+</div>
+
+<div class="toastWrap" id="toastWrap"><div class="toast" id="toast"></div></div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const SB_URL = 'https://xoiiolrbbwbtixbisptq.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvaWlvbHJiYndidGl4YmlzcHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDA0MjksImV4cCI6MjA5NzgxNjQyOX0.qvEStlKmSILbLkUFhrX2G70804fzvR4wKvTRl7-gfrk';
+const STANDARD_FIELDS = ['name','phone','date','garden','city','addr','status','comments','visit_date','action','source','sheet_row_key','id','created_at','updated_at','extra_data'];
+const DEFAULT_STATUSES = [
+  {key:'new', emoji:'🟢', label:'New Lead', bg:'#E1F5EE', tx:'#085041', dot:'#1D9E75'},
+  {key:'contacted', emoji:'🔵', label:'Contacted', bg:'#E6F1FB', tx:'#0C447C', dot:'#378ADD'},
+  {key:'visit', emoji:'🟠', label:'Visit Scheduled', bg:'#FAEEDA', tx:'#633806', dot:'#BA7517'},
+  {key:'neg', emoji:'🟣', label:'Negotiation', bg:'#EEEDFE', tx:'#3C3489', dot:'#7F77DD'},
+  {key:'quot', emoji:'🩷', label:'Quotation Sent', bg:'#FBEAF0', tx:'#72243E', dot:'#D4537E'},
+  {key:'won', emoji:'✅', label:'Won', bg:'#EAF3DE', tx:'#27500A', dot:'#639922'},
+  {key:'lost', emoji:'❌', label:'Lost', bg:'#FCEBEB', tx:'#791F1F', dot:'#E24B4A'}
+];
+const DEFAULT_COL_MAP = {name:'Name', phone:'Phone', date:'Date', garden:'Gaden Size', city:'City', addr:'Adress', status:'Statues', comments:'Comments', source:'Source'};
+const PIPELINE_ORDER = ['all','new','contacted','visit','neg','quot','won','lost'];
+const PIPELINE_LABELS = {all:'All Leads',new:'New Lead',contacted:'Contacted',visit:'Visit Scheduled',neg:'Negotiation',quot:'Quotation Sent',won:'Won',lost:'Lost'};
+
+// ============================================================
+// STATE
+// ============================================================
+let session = null;
+let leads = [];
+let allLeads = [];
+let config = {};
+let statuses = [...DEFAULT_STATUSES];
+let colMap = {...DEFAULT_COL_MAP};
+let gardenSizes = ['50 - 150 m\u00B2','150 - 250 m\u00B2','250 - 300 m\u00B2','300+ m\u00B2'];
+let formFields = [{key:'name',label:'Lead Name',req:true,on:true},{key:'phone',label:'Phone',req:true,on:true},{key:'date',label:'Entry Date',req:false,on:true},{key:'garden',label:'Garden Size',req:false,on:true},{key:'city',label:'City',req:false,on:true},{key:'addr',label:'Address',req:false,on:true},{key:'comments',label:'Comments',req:false,on:true},{key:'action',label:'Next Action',req:false,on:false},{key:'visit',label:'Visit Date',req:false,on:false}];
+let customColumns = []; // {key, name}
+// ALL possible columns that can appear on dashboard table
+const ALL_COLUMNS = [
+  {key:'date',label:'Date',std:true},
+  {key:'name',label:'Name',std:true},
+  {key:'phone',label:'Phone',std:true},
+  {key:'garden',label:'Garden Size',std:true},
+  {key:'city',label:'Location',std:true},
+  {key:'addr',label:'Address',std:true},
+  {key:'status',label:'Status',std:true},
+  {key:'comments',label:'Comments',std:true},
+  {key:'source',label:'Source',std:true},
+  {key:'visit_date',label:'Visit Date',std:true},
+  {key:'action',label:'Next Action',std:true},
+];
+let visibleCols = ['date','name','phone','garden','city','status','visit_date']; // default visible
+let activePipeline = 'all';
+let searchQuery = '';
+let pollTimer = null;
+let isSyncing = false;
+let sortCol = null;
+let sortAsc = true;
+
+// ============================================================
+// HELPERS
+// ============================================================
+function escHTML(s) { if(!s)return''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function normPhone(p){ return (p||'').replace(/\D/g,''); }
+function buildKey(name,phone){ const p=normPhone(phone); return p?'ph_'+p:'nm_'+(name||'').toLowerCase().replace(/\s+/g,'_'); }
+function initials(name){ return (name||'').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?'; }
+function nowTime(){ return new Date().toLocaleTimeString('en-US',{hour12:false}); }
+function isStandardField(key){ return STANDARD_FIELDS.includes(key); }
+function slugifyKey(name){ return 'col_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
+
+// Get extra data object from a lead
+function getExtraData(lead){
+  if(!lead||!lead.extra_data) return {};
+  try{ return JSON.parse(lead.extra_data)||{}; }catch(e){ return {}; }
+}
+// Strip all non-digits from phone
+function cleanPhone(p){
+  return (p||'').replace(/\D/g,'');
+}
+// Get all display columns (custom columns that should show in table)
+function getDisplayColumns(){
+  return customColumns.filter(cc => cc && cc.key && cc.name);
+}
+
+// ============================================================
+// SUPABASE REST API
+// ============================================================
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {
+    headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}
+  });
+  if(!r.ok){ const txt=await r.text(); throw new Error('GET '+table+': '+r.status+' '+txt); }
+  return r.json();
+}
+async function sbPost(table, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method:'POST', headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    body: JSON.stringify(body)
+  });
+  if(!r.ok){ const txt=await r.text(); throw new Error('POST '+table+': '+r.status+' '+txt); }
+  return r.json();
+}
+async function sbPatch(table, filter, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`, {
+    method:'PATCH', headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    body: JSON.stringify(body)
+  });
+  if(!r.ok){ const txt=await r.text(); throw new Error('PATCH '+table+': '+r.status+' '+txt); }
+  return r.json();
+}
+async function sbDelete(table, filter) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`, {
+    method:'DELETE', headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}
+  });
+  if(!r.ok) throw new Error('DELETE '+table+': '+r.status);
+  return true;
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin() {
+  const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+  const btn=document.getElementById('loginBtn');
+  const err=document.getElementById('loginError');
+  if(!email){err.textContent='Enter your email';err.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Checking...';
+  try{
+    const users=await sbGet('crm_users','email=eq.'+encodeURIComponent(email));
+    if(!users||!users.length) throw new Error('Email not authorized');
+    session=users[0];
+    localStorage.setItem('rivercrm_session',JSON.stringify(session));
+    err.style.display='none'; enterApp();
+  }catch(e){ err.textContent=e.message||'Login failed'; err.style.display='block'; }
+  btn.disabled=false; btn.textContent='Sign In';
+}
+function checkSession(){
+  const saved=localStorage.getItem('rivercrm_session');
+  if(saved){ try{ session=JSON.parse(saved); return true; }catch(e){ localStorage.removeItem('rivercrm_session'); } }
+  return false;
+}
+function enterApp(){
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('app').classList.add('active');
+  document.getElementById('userAvatar').textContent=initials(session.email);
+  document.getElementById('userName').textContent=session.email.split('@')[0];
+  if(session.role==='admin'||session.is_owner) document.getElementById('settingsTabBtn').style.display='';
+  initApp();
+}
+function doLogout(){
+  session=null; localStorage.removeItem('rivercrm_session');
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('loginPage').style.display='flex';
+  document.getElementById('settingsTabBtn').style.display='none';
+  document.querySelectorAll('.navTab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('dashboardPage').classList.add('active');
+  document.querySelector('[data-page="dashboard"]').classList.add('active');
+  document.title='River CRM';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function initApp(){
+  try{
+    await loadConfig();
+    await loadLeads();
+    renderDashboard();
+    startPoll();
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }catch(e){
+    console.error('initApp error:',e);
+    showToast('Failed to load: '+e.message,'error');
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+}
+
+// ============================================================
+// CONFIG
+// ============================================================
+async function loadConfig(){
+  const rows=await sbGet('crm_config');
+  config={};
+  for(const r of rows) config[r.key]=r.value;
+  if(config.statuses){ try{ statuses=JSON.parse(config.statuses); }catch(e){} }
+  if(config.col_map){ try{ colMap=JSON.parse(config.col_map); }catch(e){} }
+  if(config.column_mapping && Object.keys(colMap).length <= 8){ try{ const cm=JSON.parse(config.column_mapping); if(Object.keys(cm).length > Object.keys(colMap).length) colMap=cm; }catch(e){} }
+  // Ensure all standard fields are in colMap (merge with defaults)
+  for(const [key,val] of Object.entries(DEFAULT_COL_MAP)){
+    if(!colMap[key]) colMap[key]=val;
+  }
+  if(config.garden_sizes){ try{ gardenSizes=JSON.parse(config.garden_sizes); }catch(e){} }
+  if(config.fields){ try{ formFields=JSON.parse(config.fields); }catch(e){} }
+  if(config.form_fields){ try{ formFields=JSON.parse(config.form_fields); }catch(e){} }
+  if(config.custom_columns){ try{ customColumns=JSON.parse(config.custom_columns)||[]; }catch(e){ customColumns=[]; } }
+  else{ customColumns=[]; }
+  // Auto-sync: ensure any non-standard colMap keys are in customColumns
+  for(const [key, colName] of Object.entries(colMap)){
+    if(!isStandardField(key) && !customColumns.find(cc=>cc.key===key)){
+      customColumns.push({key, name: colName});
+    }
+  }
+  // Load visible columns
+  if(config.visible_columns){ try{ visibleCols=JSON.parse(config.visible_columns)||['date','name','phone','garden','city','status','visit_date']; }catch(e){} }
+  else{ visibleCols=['date','name','phone','garden','city','status','visit_date']; }
+}
+async function saveConfig(key,value){
+  const strVal = typeof value==='string'?value:JSON.stringify(value);
+  await sbPatch('crm_config','key=eq.'+encodeURIComponent(key),{value:strVal});
+  config[key]=strVal;
+}
+
+// ============================================================
+// LEADS
+// ============================================================
+async function loadLeads(){
+  let all=[], offset=0, limit=1000;
+  while(true){
+    const page=await sbGet('leads','select=*&order=created_at.desc&limit='+limit+'&offset='+offset);
+    if(!page||!page.length) break;
+    all=all.concat(page);
+    if(page.length<limit) break;
+    offset+=limit;
+  }
+  allLeads=all;
+  filterLeads();
+}
+function filterLeads(){
+  let list=[...allLeads];
+  if(activePipeline!=='all') list=list.filter(l=>l.status===activePipeline);
+  if(searchQuery){
+    const q=searchQuery.toLowerCase();
+    list=list.filter(l=>
+      (l.name||'').toLowerCase().includes(q)||
+      cleanPhone(l.phone).includes(q)||
+      (l.city||'').toLowerCase().includes(q)||
+      (l.comments||'').toLowerCase().includes(q)||
+      (l.addr||'').toLowerCase().includes(q)
+    );
+  }
+  if(sortCol){
+    list.sort((a,b)=>{
+      let av, bv;
+      if(isStandardField(sortCol)){
+        av=(a[sortCol]||'').toString().toLowerCase();
+        bv=(b[sortCol]||'').toString().toLowerCase();
+      }else{
+        const exA=getExtraData(a), exB=getExtraData(b);
+        av=(exA[sortCol]||'').toString().toLowerCase();
+        bv=(exB[sortCol]||'').toString().toLowerCase();
+      }
+      if(av<bv) return sortAsc?-1:1;
+      if(av>bv) return sortAsc?1:-1;
+      return 0;
+    });
+  }
+  leads=list;
+}
+
+// ============================================================
+// SORT
+// ============================================================
+function toggleSort(col){
+  if(sortCol===col) sortAsc=!sortAsc;
+  else{ sortCol=col; sortAsc=true; }
+  document.querySelectorAll('.leadsTable th').forEach(th=>th.classList.remove('sort-active'));
+  document.querySelectorAll('.leadsTable th .sortArrow').forEach(el=>{ el.textContent='↕'; el.style.opacity='0.4'; });
+  const arrow=document.getElementById('sort_'+col);
+  if(arrow){ arrow.textContent=sortAsc?'↑':'↓'; arrow.style.opacity='1'; arrow.closest('th').classList.add('sort-active'); }
+  filterLeads();
+  renderLeadsTable();
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderDashboard(){
+  renderMetrics();
+  renderPipelineBar();
+  renderTableHeader();
+  renderLeadsTable();
+  updateLiveBadge();
+}
+function renderMetrics(){
+  const total=allLeads.length;
+  const won=allLeads.filter(l=>l.status==='won').length;
+  const visit=allLeads.filter(l=>l.status==='visit').length;
+  const visitDone=allLeads.filter(l=>l.visit_date&&l.status!=='visit').length;
+  const wonRate=total?Math.round(won/total*100):0;
+  document.getElementById('wonRateVal').textContent=wonRate+'%';
+  document.getElementById('wonRateSub').textContent=`${won} won out of ${total} total leads`;
+  document.getElementById('wonRateBar').style.width=wonRate+'%';
+  const visitRate=total?Math.round(visit/total*100):0;
+  document.getElementById('visitRateVal').textContent=visitRate+'%';
+  document.getElementById('visitRateSub').textContent=`${visit} of ${total} leads scheduled`;
+  document.getElementById('visitRateBar').style.width=visitRate+'%';
+  document.getElementById('visitDetail').textContent=`${visitDone} completed · ${visit} upcoming`;
+
+  const cities={}; allLeads.forEach(l=>{if(l.city)cities[l.city]=(cities[l.city]||0)+1;});
+  const topCities=Object.entries(cities).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const maxCity=topCities.length?topCities[0][1]:1;
+  document.getElementById('topLocations').innerHTML=topCities.map(([c,n])=>`<div class="chartRow"><span class="chartLabel">${escHTML(c)}</span><div class="chartBarWrap"><div class="chartBarFill" style="width:${Math.round(n/maxCity*100)}%;background:linear-gradient(90deg,#378ADD,#1D9E75)"></div></div><span class="chartValue">${n}</span></div>`).join('')||'<div style="color:#9CA3AF;font-size:.85rem;padding:10px 0;">No data</div>';
+
+  const gardens={}; allLeads.forEach(l=>{if(l.garden)gardens[l.garden]=(gardens[l.garden]||0)+1;});
+  const topGardens=Object.entries(gardens).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const maxGarden=topGardens.length?topGardens[0][1]:1;
+  const gardenColors=['#1D9E75','#378ADD','#BA7517','#7F77DD'];
+  document.getElementById('gardenDemand').innerHTML=topGardens.map(([g,n],i)=>`<div class="chartRow"><span class="chartLabel">${escHTML(g)}</span><div class="chartBarWrap"><div class="chartBarFill" style="width:${Math.round(n/maxGarden*100)}%;background:${gardenColors[i%gardenColors.length]}"></div></div><span class="chartValue">${n}</span></div>`).join('')||'<div style="color:#9CA3AF;font-size:.85rem;padding:10px 0;">No data</div>';
+}
+function renderPipelineBar(){
+  const counts={}; allLeads.forEach(l=>{counts[l.status]=(counts[l.status]||0)+1;});
+  const total=allLeads.length;
+  document.getElementById('pipelineBar').innerHTML=PIPELINE_ORDER.map(k=>{
+    const count=k==='all'?total:(counts[k]||0);
+    return `<button class="pipelineTab ${activePipeline===k?'active':''}" onclick="setPipeline('${k}')">${escHTML(PIPELINE_LABELS[k]||k)}<span class="pipelineCount">${count}</span></button>`;
+  }).join('');
+}
+
+// Build status options HTML for select dropdowns
+function buildStatusOptionsHTML(selectedKey){
+  return statuses.map(s=>{
+    const sk=s.key||s.id||'', sl=s.label||s.name||'';
+    return `<option value="${escHTML(sk)}" ${sk===selectedKey?'selected':''}>${escHTML(sl)}</option>`;
+  }).join('');
+}
+
+// Dynamic table header driven by visibleCols
+function renderTableHeader(){
+  let html='';
+  for(const key of visibleCols){
+    // Find label from ALL_COLUMNS or customColumns
+    const colDef=ALL_COLUMNS.find(c=>c.key===key);
+    const ccDef=customColumns.find(c=>c.key===key);
+    const label=colDef?colDef.label:(ccDef?ccDef.name:key);
+    html+=`<th onclick="toggleSort('${escHTML(key)}')">${escHTML(label)} <span class="sortArrow" id="sort_${escHTML(key)}">↕</span></th>`;
+  }
+  html+=`<th>Actions</th>`;
+  document.getElementById('leadsTableHead').innerHTML=html;
+  // Restore sort indicator
+  if(sortCol){
+    const arrow=document.getElementById('sort_'+sortCol);
+    if(arrow){ arrow.textContent=sortAsc?'↑':'↓'; arrow.style.opacity='1'; arrow.closest('th').classList.add('sort-active'); }
+  }
+}
+
+// Render a single table cell based on column key
+function renderTableCell(lead,extra,colKey){
+  // Special rendering for certain columns
+  if(colKey==='name') return `<td><div class="leadName">${escHTML(lead.name)}</div></td>`;
+  if(colKey==='phone') return `<td><div class="leadPhone">${escHTML(cleanPhone(lead.phone))||'—'}</div></td>`;
+  if(colKey==='city') return `<td><div class="leadLocation">${escHTML(lead.city||'—')}</div>${lead.addr?`<div class="leadAddr">${escHTML(lead.addr)}</div>`:''}</td>`;
+  if(colKey==='status'){
+    const st=getStatusObj(lead.status);
+    return `<td><div class="statusWrap" id="sw_${lead.id}"><span class="statusPill" style="background:${st.bg};color:${st.tx}" onclick="toggleStatusDropdown(${lead.id},event)"><span class="statusDot" style="background:${st.dot}"></span>${escHTML(st.emoji)} ${escHTML(st.label)}</span><div class="statusDropdown" id="sd_${lead.id}"></div></div></td>`;
+  }
+  // Generic: standard fields from lead, custom fields from extra_data
+  const val=isStandardField(colKey)?(lead[colKey]||''):(extra[colKey]||'');
+  return `<td>${escHTML(val)||'—'}</td>`;
+}
+
+function renderLeadsTable(){
+  const tbody=document.getElementById('leadsTableBody');
+  const empty=document.getElementById('tableEmpty');
+  if(!leads.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML=leads.map(lead=>{
+    let extra=getExtraData(lead);
+    let html=`<tr>`;
+    for(const colKey of visibleCols){
+      html+=renderTableCell(lead,extra,colKey);
+    }
+    // Actions column always last
+    html+=`<td><div class="actionsCell"><button class="iconBtn" onclick="openEditLeadModal(${lead.id})" title="Edit">✏️</button><button class="iconBtn delete" onclick="deleteLead(${lead.id})" title="Delete">🗑️</button></div></td>`;
+    html+=`</tr>`;
+    return html;
+  }).join('');
+}
+function getStatusObj(key){
+  const s=statuses.find(s=>s.key===key||s.id===key);
+  if(s){ if(s.id&&!s.key) return {key:s.id,emoji:'',label:s.name,bg:'#F3F4F6',tx:'#1F2937',dot:s.color||'#9CA3AF'}; return s; }
+  return {key,emoji:'',label:key,bg:'#F3F4F6',tx:'#1F2937',dot:'#9CA3AF'};
+}
+function updateLiveBadge(){
+  document.getElementById('liveText').textContent=`Live · ${allLeads.length} leads · ${nowTime()}`;
+  document.title=`River CRM · ${allLeads.length} leads`;
+}
+
+// Get unique cities for location dropdown
+function getUniqueCities(){
+  const cities=new Set();
+  allLeads.forEach(l=>{ if(l.city) cities.add(l.city); });
+  return Array.from(cities).sort();
+}
+
+function setPipeline(p){ activePipeline=p; filterLeads(); renderPipelineBar(); renderLeadsTable(); }
+function onSearch(){ searchQuery=document.getElementById('searchInput').value; filterLeads(); renderLeadsTable(); }
+
+// ============================================================
+// STATUS DROPDOWN
+// ============================================================
+let openStatusId=null;
+function toggleStatusDropdown(leadId,event){
+  event.stopPropagation();
+  if(openStatusId&&openStatusId!==leadId) closeAllStatusDropdowns();
+  const dd=document.getElementById('sd_'+leadId);
+  if(dd.classList.contains('show')){dd.classList.remove('show');openStatusId=null;return;}
+  dd.innerHTML=statuses.map(s=>{
+    const sk=s.key||s.id||'', sl=s.label||s.name||'', se=s.emoji||'', sd=s.dot||s.color||'#ccc';
+    return `<button class="statusOption" onclick="changeStatus(${leadId},'${escHTML(sk)}',event)"><span style="width:8px;height:8px;border-radius:50%;background:${sd};display:inline-block;"></span><span>${escHTML(se)} ${escHTML(sl)}</span></button>`;
+  }).join('');
+  dd.classList.add('show'); openStatusId=leadId;
+}
+function closeAllStatusDropdowns(){ document.querySelectorAll('.statusDropdown.show').forEach(d=>d.classList.remove('show')); openStatusId=null; }
+document.addEventListener('click',closeAllStatusDropdowns);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllStatusDropdowns();});
+async function changeStatus(leadId,newStatus,event){
+  event.stopPropagation(); closeAllStatusDropdowns();
+  try{ await sbPatch('leads','id=eq.'+leadId,{status:newStatus}); const lead=allLeads.find(l=>l.id===leadId); if(lead)lead.status=newStatus; renderDashboard(); showToast('Status updated','success'); }
+  catch(e){ showToast('Failed to update status','error'); }
+}
+
+// ============================================================
+// LEAD CRUD
+// ============================================================
+async function addLead(data){
+  const key=buildKey(data.name,data.phone);
+  // Clean phone - strip all non-digits
+  const cleanPhoneNum=cleanPhone(data.phone);
+  // Separate standard fields from extra fields
+  const payload={name:data.name,phone:cleanPhoneNum,date:data.date||'',garden:data.garden||'',city:data.city||'',addr:data.addr||'',status:data.status||'new',comments:data.comments||'',visit_date:data.visit_date||'',action:data.action||'',sheet_row_key:key,source:data.source||'manual'};
+  const extra={};
+  for(const cc of customColumns){ if(data[cc.key]!==undefined&&data[cc.key]!=='') extra[cc.key]=data[cc.key]; }
+  if(Object.keys(extra).length>0) payload.extra_data=JSON.stringify(extra);
+  const result=await sbPost('leads',payload);
+  allLeads.unshift(result[0]||payload);
+  filterLeads(); renderDashboard(); showToast('Lead added','success');
+  return result;
+}
+async function updateLead(id,data){
+  const result=await sbPatch('leads','id=eq.'+id,data);
+  const idx=allLeads.findIndex(l=>l.id===id);
+  if(idx!==-1){ allLeads[idx]={...allLeads[idx],...data}; if(data.extra_data) allLeads[idx].extra_data=data.extra_data; }
+  renderDashboard(); showToast('Lead updated','success'); return result;
+}
+async function deleteLead(id){
+  if(!confirm('Delete this lead? This cannot be undone.')) return;
+  try{ await sbDelete('leads','id=eq.'+id); allLeads=allLeads.filter(l=>l.id!==id); filterLeads(); renderDashboard(); showToast('Lead deleted','success'); }
+  catch(e){ showToast('Failed to delete lead','error'); }
+}
+
+// ============================================================
+// GOOGLE SHEETS SYNC
+// ============================================================
+async function fetchSheetData(){
+  const apiKey=config.sheets_key||document.getElementById('sheetApiKey')?.value?.trim();
+  const sheetId=config.sheet_id||document.getElementById('sheetId')?.value?.trim();
+  const tab=config.sheet_tab||document.getElementById('sheetTab')?.value?.trim()||'Sheet1';
+  if(!apiKey||!sheetId) throw new Error('Google Sheets API Key and Sheet ID are required');
+  const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}?key=${apiKey}`);
+  if(!r.ok) throw new Error('Sheet fetch failed: '+r.status);
+  const data=await r.json();
+  return data.values||[];
+}
+function parseHeaders(rows){
+  if(!rows||!rows.length) return [];
+  return rows[0].map((h,i)=>({index:i,header:(h||'').trim()}));
+}
+
+// Detect new headers from the sheet and add them to colMap + customColumns
+function detectNewHeaders(headers){
+  const currentHeaders=Object.values(colMap);
+  const newHeaders=headers.filter(h=>h.header&&!currentHeaders.includes(h.header)&&h.header!=='ID');
+  let addedAny=false;
+  if(newHeaders.length){
+    for(const nh of newHeaders){
+      const key=slugifyKey(nh.header);
+      if(!colMap[key]){
+        colMap[key]=nh.header;
+        addedAny=true;
+        // Also add to customColumns so it shows on dashboard
+        if(!customColumns.find(cc=>cc.key===key)){
+          customColumns.push({key,name:nh.header});
+        }
+      }
+    }
+    showToast(`Detected ${newHeaders.length} new column(s): ${newHeaders.map(h=>h.header).join(', ')}`,'success');
+  }
+  return addedAny;
+}
+
+// Auto-sync: ensure ALL columns present in the sheet appear on the dashboard
+function syncSheetColsToDashboard(headers){
+  let changed=false;
+  for(const h of headers){
+    if(!h.header) continue;
+    // Find which colMap key this header maps to
+    for(const [key,colName] of Object.entries(colMap)){
+      if(colName===h.header && !visibleCols.includes(key)){
+        visibleCols.push(key);
+        changed=true;
+      }
+    }
+  }
+  return changed;
+}
+
+// Map a row: returns {standard:{...}, extra:{...}}
+function mapRowSplit(row,headers){
+  const standard={};
+  const extra={};
+  for(const [key,colName] of Object.entries(colMap)){
+    const h=headers.find(h=>h.header===colName);
+    if(h){
+      const val=(row[h.index]||'').trim();
+      if(isStandardField(key)) standard[key]=val;
+      else extra[key]=val;
+    }
+  }
+  return {standard,extra};
+}
+
+async function processSheetRows(){
+  const rows=await fetchSheetData();
+  if(!rows||rows.length<2) return 0;
+  const headers=parseHeaders(rows);
+  const hadNewCols=detectNewHeaders(headers);
+
+  // Save updated colMap and customColumns if new columns were found
+  if(hadNewCols){
+    try{
+      await saveConfig('col_map',colMap);
+      await saveConfig('column_mapping',colMap);
+      await saveConfig('custom_columns',customColumns);
+    }catch(e){ console.warn('Failed to save new colMap:',e); }
+  }
+
+  // First: update existing leads with data from new columns (clean phone from sheet)
+  let updatedCount=0;
+  for(const row of rows.slice(1)){
+    const mapped=mapRowSplit(row,headers);
+    if(!mapped.standard.name&&!mapped.standard.phone) continue;
+    // Clean phone from sheet data
+    mapped.standard.phone=cleanPhone(mapped.standard.phone);
+    // Match by sheet_row_key OR by cleaned phone digits
+    const cleanSheetPhone=normPhone(mapped.standard.phone||'');
+    const existing=allLeads.find(l=>{
+      if(l.sheet_row_key===buildKey(mapped.standard.name,mapped.standard.phone)) return true;
+      // Match by normalized phone (handles old keys with +, letters, etc.)
+      const cleanDbPhone=normPhone(l.phone||'');
+      return cleanDbPhone && cleanSheetPhone && cleanDbPhone===cleanSheetPhone;
+    });
+    if(existing){
+      // Update extra_data for custom columns
+      let extra=getExtraData(existing);
+      let hasUpdate=false;
+      for(const [ek,ev] of Object.entries(mapped.extra)){
+        if(ev && (!extra[ek]||extra[ek]!==ev)){ extra[ek]=ev; hasUpdate=true; }
+      }
+      // Update standard fields that come from sheet (like source)
+      let standardUpdate={};
+      for(const [sk,sv] of Object.entries(mapped.standard)){
+        if(isStandardField(sk) && sv && (!existing[sk]||existing[sk]==='')){
+          standardUpdate[sk]=sv;
+          hasUpdate=true;
+        }
+      }
+      if(hasUpdate){
+        try{
+          const updatePayload={...standardUpdate};
+          if(Object.keys(extra).length>0) updatePayload.extra_data=JSON.stringify(extra);
+          await sbPatch('leads','id=eq.'+existing.id,updatePayload);
+          // Update local lead object
+          Object.assign(existing,standardUpdate);
+          if(updatePayload.extra_data) existing.extra_data=updatePayload.extra_data;
+          updatedCount++;
+        }catch(e){ console.warn('Update existing failed:',e); }
+      }
+    }
+  }
+  if(updatedCount>0){ showToast(`${updatedCount} existing leads updated with new column data`,'success'); }
+
+  // Detect columns that were DELETED from sheet
+  let removedAny=false;
+  const sheetHeaderNames=headers.map(h=>h.header).filter(h=>h);
+  const keysToRemove=[];
+  for(const [key,colName] of Object.entries(colMap)){
+    if(isStandardField(key)) continue;
+    if(!sheetHeaderNames.includes(colName)) keysToRemove.push(key);
+  }
+  for(const key of keysToRemove){
+    delete colMap[key];
+    const ccIdx=customColumns.findIndex(cc=>cc.key===key);
+    if(ccIdx!==-1) customColumns.splice(ccIdx,1);
+    visibleCols=visibleCols.filter(v=>v!==key);
+    removedAny=true;
+  }
+
+  // Auto-sync: ensure ALL sheet columns (standard + custom) are visible on dashboard
+  const visChanged=syncSheetColsToDashboard(headers);
+  if(hadNewCols || removedAny || visChanged){
+    renderTableHeader();
+    try{
+      if(hadNewCols || removedAny){
+        await saveConfig('col_map',colMap);
+        await saveConfig('column_mapping',colMap);
+        await saveConfig('custom_columns',customColumns);
+      }
+      await saveConfig('visible_columns',visibleCols);
+    }catch(e){}
+  }
+
+  // Second: insert new leads
+  const seenKeys=new Set();
+  const toInsert=[];
+  for(const row of rows.slice(1)){
+    const mapped=mapRowSplit(row,headers);
+    if(!mapped.standard.name&&!mapped.standard.phone) continue;
+    // Clean phone from sheet data
+    mapped.standard.phone=cleanPhone(mapped.standard.phone);
+    const key=buildKey(mapped.standard.name,mapped.standard.phone);
+    if(seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    // Match by sheet_row_key OR by cleaned phone digits
+    const exists=allLeads.find(l=>{
+      if(l.sheet_row_key===key) return true;
+      return normPhone(l.phone||'')===normPhone(mapped.standard.phone||'');
+    });
+    if(!exists){
+      const payload={
+        name:mapped.standard.name||'',
+        phone:mapped.standard.phone||'',
+        date:mapped.standard.date||'',
+        garden:mapped.standard.garden||'',
+        city:mapped.standard.city||'',
+        addr:mapped.standard.addr||'',
+        status:mapped.standard.status||'new',
+        comments:mapped.standard.comments||'',
+        sheet_row_key:key,
+        source:'sheet'
+      };
+      if(Object.keys(mapped.extra).length>0) payload.extra_data=JSON.stringify(mapped.extra);
+      toInsert.push(payload);
+    }
+  }
+
+  if(toInsert.length){
+    for(const lead of toInsert){
+      try{ await sbPost('leads',lead); }catch(e){ console.warn('Insert skipped:',e.message); }
+    }
+    showToast(`${toInsert.length} new leads imported from sheet`,'success');
+  }
+
+  // Refresh leads list
+  await loadLeads();
+  renderDashboard();
+  return toInsert.length;
+}
+
+// Manual column sync: fetch sheet headers, add new columns, remove deleted ones
+async function syncColumnsFromSheet(){
+  const btn=event.target;
+  const origText=btn.textContent;
+  btn.disabled=true; btn.textContent='Syncing...';
+  try{
+    const rows=await fetchSheetData();
+    if(!rows||!rows.length){ showToast('No data found in sheet','error'); btn.disabled=false; btn.textContent=origText; return; }
+    const headers=parseHeaders(rows);
+    const sheetHeaderNames=headers.map(h=>h.header).filter(h=>h);
+
+    // 1. Add new columns from sheet
+    const hadNewCols=detectNewHeaders(headers);
+
+    // 2. Remove columns from tool that are NOT in sheet anymore
+    let removedAny=false;
+    const keysToRemove=[];
+    for(const [key,colName] of Object.entries(colMap)){
+      // Never remove standard mapped columns
+      if(isStandardField(key)) continue;
+      // If this column name is not in the sheet headers, mark for removal
+      if(!sheetHeaderNames.includes(colName)){
+        keysToRemove.push(key);
+      }
+    }
+    for(const key of keysToRemove){
+      // Remove from colMap
+      delete colMap[key];
+      // Remove from customColumns
+      const ccIdx=customColumns.findIndex(cc=>cc.key===key);
+      if(ccIdx!==-1) customColumns.splice(ccIdx,1);
+      // Remove from visibleCols
+      visibleCols=visibleCols.filter(v=>v!==key);
+      removedAny=true;
+    }
+
+    // 3. Sync ALL sheet columns to dashboard visible columns
+    syncSheetColsToDashboard(headers);
+
+    // 4. Save everything
+    if(hadNewCols || removedAny){
+      await saveConfig('col_map',colMap);
+      await saveConfig('column_mapping',colMap);
+      await saveConfig('custom_columns',customColumns);
+    }
+    await saveConfig('visible_columns',visibleCols);
+
+    // 5. Re-render everything
+    renderSettings();
+    renderTableHeader();
+    filterLeads();
+    renderLeadsTable();
+
+    let msg='Column sync complete';
+    if(hadNewCols) msg+=' — new columns added';
+    if(removedAny) msg+=' — deleted columns removed';
+    showToast(msg,'success');
+  }catch(e){ showToast('Column sync failed: '+e.message,'error'); }
+  btn.disabled=false; btn.textContent=origText;
+}
+
+async function silentImport(){
+  try{ return await processSheetRows(); }catch(e){ console.warn('Silent import error:',e); return 0; }
+}
+async function runManualImport(){
+  const btn=document.getElementById('importBtn');
+  btn.disabled=true; btn.textContent='Importing...';
+  try{
+    const count=await processSheetRows();
+    showToast(count?`Import complete: ${count} new leads`:'No new leads found','success');
+  }catch(e){ showToast('Import failed: '+e.message,'error'); }
+  btn.disabled=false; btn.textContent='Import New Leads';
+}
+async function runReplaceAll(){
+  if(!confirm('WARNING: This will delete ALL sheet-sourced leads and re-import. Continue?')) return;
+  try{
+    await sbDelete('leads','source=eq.sheet');
+    allLeads=allLeads.filter(l=>l.source!=='sheet');
+    const count=await processSheetRows();
+    showToast(`Replaced all leads. ${count} imported.`,'success');
+  }catch(e){ showToast('Replace failed: '+e.message,'error'); }
+}
+function startPoll(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer=setInterval(async()=>{
+    if(document.hidden||isSyncing) return;
+    if(config.auto_sync==='true'||(document.getElementById('autoSyncToggle')?.checked)){
+      isSyncing=true;
+      const count=await silentImport();
+      if(count>0) showToast(`${count} new leads from sheet`,'success');
+      updateLiveBadge();
+      isSyncing=false;
+    }
+  },30000);
+  silentImport();
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+let currentModal=null;
+function openModal(title,bodyHtml,footerHtml,onOpen){
+  currentModal=title;
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalBody').innerHTML=bodyHtml;
+  document.getElementById('modalFooter').innerHTML=footerHtml;
+  document.getElementById('modalOverlay').classList.add('active');
+  document.body.style.overflow='hidden';
+  if(onOpen) onOpen();
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('active');
+  document.body.style.overflow='';
+  currentModal=null;
+}
+function closeModalOnBackdrop(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+function getCityOptionsHTML(selectedCity){
+  const cities=getUniqueCities();
+  let html='<option value="">Select City...</option>';
+  for(const c of cities) html+=`<option value="${escHTML(c)}" ${c===selectedCity?'selected':''}>${escHTML(c)}</option>`;
+  html+='<option value="__OTHER__">+ Other (type below)</option>';
+  return html;
+}
+
+function getFormFieldsHTML(prefix='',leadData=null){
+  let html='';
+  for(const f of formFields){
+    if(!f.on) continue;
+    const id=prefix+'fld_'+f.key;
+    const val=leadData?(leadData[f.key]||''):'';
+    if(f.key==='garden'){
+      html+=`<div class="formGroup"><label for="${id}">${escHTML(f.label)}${f.req?' *':''}</label><select id="${id}"><option value="">Select garden size...</option>${gardenSizes.map(g=>`<option value="${escHTML(g)}" ${val===g?'selected':''}>${escHTML(g)}</option>`).join('')}</select></div>`;
+    }else if(f.key==='city'){
+      html+=`<div class="formGroup"><label for="${id}">${escHTML(f.label)}${f.req?' *':''}</label><select id="${id}">${getCityOptionsHTML(val)}</select><input type="text" id="${id}_other" placeholder="Type city name if not in list" style="margin-top:6px;display:none;"></div>`;
+    }else if(f.key==='comments'){
+      html+=`<div class="formGroup"><label for="${id}">${escHTML(f.label)}${f.req?' *':''}</label><textarea id="${id}" rows="3" placeholder="${escHTML(f.label)}">${escHTML(val)}</textarea></div>`;
+    }else{
+      const inputType=f.key==='date'||f.key==='visit'?'date':'text';
+      const phoneAttrs=f.key==='phone'?' oninput="this.value=this.value.replace(/\\D/g,\'\')"':' ';
+      html+=`<div class="formGroup"><label for="${id}">${escHTML(f.label)}${f.req?' *':''}</label><input type="${inputType}" id="${id}" placeholder="${escHTML(f.label)}" value="${escHTML(val)}"${phoneAttrs}></div>`;
+    }
+  }
+  // Custom columns
+  if(customColumns.length){
+    const extra=leadData?getExtraData(leadData):{};
+    html+='<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;"><h4 style="font-size:.85rem;color:var(--text2);margin-bottom:10px;">Custom Columns</h4>';
+    for(const cc of customColumns){
+      const id=prefix+'fld_'+cc.key;
+      const val=extra[cc.key]||'';
+      html+=`<div class="formGroup"><label for="${id}">${escHTML(cc.name)}</label><input type="text" id="${id}" placeholder="${escHTML(cc.name)}" value="${escHTML(val)}"></div>`;
+    }
+    html+='</div>';
+  }
+  return html;
+}
+function collectFormData(prefix=''){
+  const data={};
+  for(const f of formFields){
+    if(!f.on) continue;
+    const el=document.getElementById(prefix+'fld_'+f.key);
+    if(!el) continue;
+    if(f.key==='city'&&el.value==='__OTHER__'){
+      const other=document.getElementById(prefix+'fld_city_other');
+      data[f.key]=other?other.value.trim():'';
+    }else{
+      data[f.key]=el.value.trim();
+    }
+  }
+  for(const cc of customColumns){
+    const el=document.getElementById(prefix+'fld_'+cc.key);
+    if(el&&el.value.trim()) data[cc.key]=el.value.trim();
+  }
+  return data;
+}
+
+function openAddLeadModal(){
+  openModal('Add New Lead',getFormFieldsHTML('add'),`<button class="btn btnSecondary" onclick="closeModal()">Cancel</button><button class="btn btnPrimary" id="addLeadSave" onclick="submitAddLead()">Save Lead</button>`,()=>wireCityOther('add'));
+}
+function wireCityOther(prefix){
+  const sel=document.getElementById(prefix+'fld_city');
+  if(sel) sel.addEventListener('change',()=>{ const other=document.getElementById(prefix+'fld_city_other'); if(other) other.style.display=sel.value==='__OTHER__'?'block':'none'; });
+}
+async function submitAddLead(){
+  const data=collectFormData('add');
+  if(!data.name||!data.phone){ showToast('Name and phone are required','error'); return; }
+  const btn=document.getElementById('addLeadSave');
+  btn.disabled=true;
+  try{ await addLead(data); closeModal(); }catch(e){ showToast('Failed to add lead: '+e.message,'error'); btn.disabled=false; }
+}
+
+function openEditLeadModal(id){
+  const lead=allLeads.find(l=>l.id===id);
+  if(!lead) return;
+  const extra=getExtraData(lead);
+  let body=`<div class="formRow"><div class="formGroup"><label>Name *</label><input type="text" id="edit_name" value="${escHTML(lead.name)}"></div><div class="formGroup"><label>Phone *</label><input type="text" id="edit_phone" value="${escHTML(cleanPhone(lead.phone))}" oninput="this.value=this.value.replace(/\\D/g,'')"></div></div>`;
+  body+=`<div class="formRow"><div class="formGroup"><label>Date</label><input type="text" id="edit_date" value="${escHTML(lead.date)}"></div><div class="formGroup"><label>Status</label><select id="edit_status">${buildStatusOptionsHTML(lead.status)}</select></div></div>`;
+  body+=`<div class="formRow"><div class="formGroup"><label>Garden Size</label><select id="edit_garden"><option value="">Select...</option>${gardenSizes.map(g=>`<option value="${escHTML(g)}" ${lead.garden===g?'selected':''}>${escHTML(g)}</option>`).join('')}</select></div><div class="formGroup"><label>City</label><select id="edit_city">${getCityOptionsHTML(lead.city)}</select><input type="text" id="edit_city_other" placeholder="Type city name if not in list" style="margin-top:6px;display:${lead.city&&!getUniqueCities().includes(lead.city)?'block':'none'};" value="${getUniqueCities().includes(lead.city)?'':escHTML(lead.city)}"></div></div>`;
+  body+=`<div class="formGroup"><label>Address</label><input type="text" id="edit_addr" value="${escHTML(lead.addr)}"></div>`;
+  body+=`<div class="formRow"><div class="formGroup"><label>Visit Date</label><input type="text" id="edit_visit_date" value="${escHTML(lead.visit_date)}"></div><div class="formGroup"><label>Next Action</label><input type="text" id="edit_action" value="${escHTML(lead.action)}"></div></div>`;
+  body+=`<div class="formRow"><div class="formGroup"><label>Comments</label><textarea id="edit_comments" rows="2">${escHTML(lead.comments)}</textarea></div><div class="formGroup"><label>Source</label><input type="text" id="edit_source" value="${escHTML(lead.source||'')}" placeholder="e.g. Google, Referral"></div></div>`;
+  if(customColumns.length){
+    body+='<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;"><h4 style="font-size:.85rem;color:var(--text2);margin-bottom:10px;">Extra Columns</h4>';
+    for(const cc of customColumns){
+      const val=extra[cc.key]||'';
+      body+=`<div class="formGroup"><label>${escHTML(cc.name)}</label><input type="text" id="edit_${escHTML(cc.key)}" value="${escHTML(val)}"></div>`;
+    }
+    body+='</div>';
+  }
+  openModal('Edit Lead',body,`<button class="btn btnSecondary" onclick="closeModal()">Cancel</button><button class="btn btnPrimary" id="editLeadSave" onclick="submitEditLead(${lead.id})">Save Changes</button>`,()=>{
+    const sel=document.getElementById('edit_city');
+    if(sel) sel.addEventListener('change',()=>{ const other=document.getElementById('edit_city_other'); if(other) other.style.display=sel.value==='__OTHER__'?'block':'none'; });
+  });
+}
+async function submitEditLead(id){
+  const citySel=document.getElementById('edit_city');
+  let cityVal=citySel?citySel.value:'';
+  if(cityVal==='__OTHER__'){ const other=document.getElementById('edit_city_other'); cityVal=other?other.value.trim():''; }
+  const data={
+    name:document.getElementById('edit_name').value.trim(),
+    phone:cleanPhone(document.getElementById('edit_phone').value),
+    date:document.getElementById('edit_date').value.trim(),
+    status:document.getElementById('edit_status').value,
+    garden:document.getElementById('edit_garden').value,
+    city:cityVal,
+    addr:document.getElementById('edit_addr').value.trim(),
+    visit_date:document.getElementById('edit_visit_date').value.trim(),
+    action:document.getElementById('edit_action').value.trim(),
+    comments:document.getElementById('edit_comments').value.trim(),
+    source:document.getElementById('edit_source').value.trim()
+  };
+  // Collect custom columns into extra_data
+  const lead=allLeads.find(l=>l.id===id);
+  let extra=lead?getExtraData(lead):{};
+  let hasExtra=false;
+  for(const cc of customColumns){
+    const el=document.getElementById('edit_'+cc.key);
+    if(el){ extra[cc.key]=el.value.trim(); hasExtra=true; }
+  }
+  if(hasExtra) data.extra_data=JSON.stringify(extra);
+  if(!data.name||!data.phone){ showToast('Name and phone are required','error'); return; }
+  const btn=document.getElementById('editLeadSave');
+  btn.disabled=true;
+  try{ await updateLead(id,data); closeModal(); }catch(e){ showToast('Failed to update lead: '+e.message,'error'); btn.disabled=false; }
+}
+
+function openScheduleModal(){
+  const body=`<div class="formGroup"><label>Select Lead</label><select id="sched_lead"><option value="">Choose a lead...</option>${allLeads.map(l=>`<option value="${l.id}">${escHTML(l.name)} — ${escHTML(cleanPhone(l.phone))}</option>`).join('')}</select></div><div class="formGroup"><label>Visit Date</label><input type="date" id="sched_date"></div><div class="formGroup"><label>Notes</label><textarea id="sched_notes" rows="3" placeholder="Visit notes..."></textarea></div>`;
+  openModal('Schedule Visit',body,`<button class="btn btnSecondary" onclick="closeModal()">Cancel</button><button class="btn btnPrimary" id="schedSave" onclick="submitSchedule()">Schedule</button>`);
+}
+async function submitSchedule(){
+  const leadId=document.getElementById('sched_lead').value;
+  const date=document.getElementById('sched_date').value;
+  const notes=document.getElementById('sched_notes').value.trim();
+  if(!leadId||!date){ showToast('Lead and date are required','error'); return; }
+  const btn=document.getElementById('schedSave'); btn.disabled=true;
+  try{ await sbPatch('leads','id=eq.'+leadId,{visit_date:date,action:notes,status:'visit'}); const lead=allLeads.find(l=>l.id==leadId); if(lead){lead.visit_date=date;lead.action=notes;lead.status='visit';} renderDashboard(); closeModal(); showToast('Visit scheduled','success'); }
+  catch(e){ showToast('Failed to schedule','error'); btn.disabled=false; }
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.navTab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(page+'Page').classList.add('active');
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  if(page==='settings') renderSettings();
+  if(page==='analytics') renderAnalytics();
+}
+function extractSheetId(){
+  const el=document.getElementById('sheetId');
+  let v=el.value.trim();
+  const m=v.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if(m) el.value=m[1];
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+function renderAnalytics(){
+  if(!allLeads.length){
+    document.getElementById('a_totalLeads').textContent='0';
+    document.getElementById('a_statusChart').innerHTML='<div style="color:#9CA3AF;padding:20px;">No data yet</div>';
+    return;
+  }
+  const total=allLeads.length;
+  // KPIs
+  document.getElementById('a_totalLeads').textContent=total;
+  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const newWeek=allLeads.filter(l=>new Date(l.created_at)>weekAgo).length;
+  document.getElementById('a_newWeek').textContent=newWeek;
+  const won=allLeads.filter(l=>l.status==='won').length;
+  const wonRate=total?Math.round(won/total*100):0;
+  document.getElementById('a_wonRate').textContent=wonRate+'%';
+  document.getElementById('a_wonBar').style.width=wonRate+'%';
+  const visit=allLeads.filter(l=>l.status==='visit').length;
+  const visitRate=total?Math.round(visit/total*100):0;
+  document.getElementById('a_visitRate').textContent=visitRate+'%';
+  document.getElementById('a_visitBar').style.width=visitRate+'%';
+  const lost=allLeads.filter(l=>l.status==='lost').length;
+  const lostRate=total?Math.round(lost/total*100):0;
+  document.getElementById('a_lostRate').textContent=lostRate+'%';
+  document.getElementById('a_lostBar').style.width=lostRate+'%';
+
+  // Status breakdown
+  renderBarChart('a_statusChart',countByField(allLeads,'status',(v)=>{ const s=getStatusObj(v); return s.label||v; }));
+  // Garden distribution
+  renderBarChart('a_gardenChart',countByField(allLeads,'garden'),true);
+  // City breakdown
+  renderBarChart('a_cityChart',countByField(allLeads,'city'),true);
+  // Source analysis
+  renderBarChart('a_sourceChart',countByField(allLeads,'source'),true);
+
+  // Custom columns analysis (up to 2)
+  const dispCustomCols=customColumns.slice(0,2);
+  for(let i=0;i<2;i++){
+    const card=document.getElementById('a_customCard'+(i+1));
+    if(!card) continue;
+    if(dispCustomCols[i]){
+      card.style.display='block';
+      document.getElementById('a_customTitle'+(i+1)).textContent=dispCustomCols[i].name;
+      renderBarChart('a_customChart'+(i+1),countByExtraField(allLeads,dispCustomCols[i].key),true);
+    }else{
+      card.style.display='none';
+    }
+  }
+
+  // Timeline
+  renderTimelineChart();
+  // Funnel
+  renderFunnelChart();
+}
+
+// Count leads by a field, skip empty values
+function countByField(leads,field,labelFn){
+  const counts={};
+  leads.forEach(l=>{ const v=l[field]; if(v){ counts[v]=(counts[v]||0)+1; } });
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>({label:labelFn?labelFn(k):k,count:n}));
+}
+function countByExtraField(leads,key){
+  const counts={};
+  leads.forEach(l=>{ const ex=getExtraData(l); const v=ex[key]; if(v){ counts[v]=(counts[v]||0)+1; } });
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>({label:k,count:n}));
+}
+
+// Render a horizontal bar chart
+function renderBarChart(containerId,items,skipEmptyLabel){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  if(!items||!items.length){ el.innerHTML='<div style="color:#9CA3AF;padding:10px;">No data</div>'; return; }
+  const max=items[0].count;
+  const colors=['#1D9E75','#378ADD','#BA7517','#7F77DD','#D4537E','#639922','#E24B4A','#0C447C','#633806','#72243E'];
+  el.innerHTML=items.map((item,i)=>`
+    <div class="chartRow">
+      <span class="chartLabel">${escHTML(item.label)}</span>
+      <div class="chartBarWrap"><div class="chartBarFill" style="width:${Math.round(item.count/max*100)}%;background:${colors[i%colors.length]}"></div></div>
+      <span class="chartValue">${item.count}</span>
+    </div>
+  `).join('');
+}
+
+// Timeline chart - leads by date
+function renderTimelineChart(){
+  const el=document.getElementById('a_timelineChart');
+  if(!el) return;
+  const byDate={};
+  allLeads.forEach(l=>{
+    const d=l.date||l.created_at?.slice(0,10)||'Unknown';
+    if(d) byDate[d]=(byDate[d]||0)+1;
+  });
+  const sorted=Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0])).slice(-20);
+  if(!sorted.length){ el.innerHTML='<div style="color:#9CA3AF;padding:10px;">No date data</div>'; return; }
+  const max=sorted.reduce((m,[,n])=>Math.max(m,n),0);
+  el.innerHTML=sorted.map(([d,n])=>`
+    <div class="chartRow">
+      <span class="chartLabel" style="width:80px;font-size:.75rem;">${escHTML(d)}</span>
+      <div class="chartBarWrap"><div class="chartBarFill" style="width:${Math.round(n/max*100)}%;background:linear-gradient(90deg,#378ADD,#1D9E75)"></div></div>
+      <span class="chartValue">${n}</span>
+    </div>
+  `).join('');
+}
+
+// Conversion funnel
+function renderFunnelChart(){
+  const el=document.getElementById('a_funnelChart');
+  if(!el) return;
+  const total=allLeads.length;
+  if(!total){ el.innerHTML='<div style="color:#9CA3AF;padding:10px;">No data</div>'; return; }
+  const funnel=[
+    {label:'Total Leads',key:'all',color:'#9CA3AF'},
+    {label:'New Lead',key:'new',color:'#1D9E75'},
+    {label:'Contacted',key:'contacted',color:'#378ADD'},
+    {label:'Visit Scheduled',key:'visit',color:'#BA7517'},
+    {label:'Negotiation',key:'neg',color:'#7F77DD'},
+    {label:'Quotation Sent',key:'quot',color:'#D4537E'},
+    {label:'Won',key:'won',color:'#639922'},
+  ];
+  const max=total;
+  el.innerHTML=funnel.map(s=>{
+    const count=s.key==='all'?total:allLeads.filter(l=>l.status===s.key).length;
+    const pct=Math.round(count/max*100);
+    return `<div class="chartRow">
+      <span class="chartLabel" style="width:110px;">${escHTML(s.label)}</span>
+      <div class="chartBarWrap"><div class="chartBarFill" style="width:${pct}%;background:${s.color}"></div></div>
+      <span class="chartValue">${count} (${pct}%)</span>
+    </div>`;
+  }).join('');
+}
+
+function renderSettings(){
+  renderUsersList();
+  document.getElementById('sheetApiKey').value=config.sheets_key||'';
+  document.getElementById('sheetId').value=config.sheet_id||'';
+  document.getElementById('sheetTab').value=config.sheet_tab||'';
+  document.getElementById('autoSyncToggle').checked=config.auto_sync==='true';
+  // Column mapping
+  document.getElementById('colMapInputs').innerHTML=Object.entries(colMap).map(([key,val])=>`<div class="formRow" style="margin-bottom:8px;"><input type="text" value="${escHTML(key)}" disabled style="background:#F9FAFB;"><input type="text" id="colmap_${escHTML(key)}" value="${escHTML(val)}" placeholder="Sheet column header"></div>`).join('');
+  renderVisibleColsList();
+  renderCustomColumnsList();
+  renderStatusList();
+  renderGardenSizes();
+  renderFormFields();
+}
+
+async function renderUsersList(){
+  try{
+    const users=await sbGet('crm_users','order=created_at.desc');
+    document.getElementById('usersList').innerHTML=`<table class="usersTable"><thead><tr><th>Email</th><th>Role</th><th></th></tr></thead><tbody>${users.map(u=>`<tr><td>${escHTML(u.email)} ${u.is_owner?'<span class="roleBadge roleOwner">Owner</span>':''}</td><td>${u.is_owner?'<span class="roleBadge roleAdmin">Admin</span>':`<select onchange="changeUserRole(${u.id},this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:.85rem;"><option value="user" ${u.role==='user'?'selected':''}>User</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select>`}</td><td style="text-align:right;">${u.is_owner?'':`<button class="iconBtn delete" onclick="removeUser(${u.id})" title="Remove">🗑️</button>`}</td></tr>`).join('')}</tbody></table>`;
+  }catch(e){ document.getElementById('usersList').innerHTML='<div style="color:#9CA3AF;">Failed to load users</div>'; }
+}
+async function changeUserRole(id,role){ try{ await sbPatch('crm_users','id=eq.'+id,{role}); showToast('Role updated','success'); renderUsersList(); }catch(e){ showToast('Failed to update role','error'); } }
+async function removeUser(id){ if(!confirm('Remove this user?')) return; try{ await sbDelete('crm_users','id=eq.'+id); showToast('User removed','success'); renderUsersList(); }catch(e){ showToast('Failed to remove user','error'); } }
+async function addUser(){
+  const email=document.getElementById('newUserEmail').value.trim().toLowerCase();
+  const role=document.getElementById('newUserRole').value;
+  if(!email||!email.includes('@')){ showToast('Valid email required','error'); return; }
+  try{ await sbPost('crm_users',{email,role}); showToast('User added','success'); document.getElementById('newUserEmail').value=''; renderUsersList(); }
+  catch(e){ showToast('Failed to add user (may already exist)','error'); }
+}
+function toggleAutoSync(){ config.auto_sync=document.getElementById('autoSyncToggle').checked?'true':'false'; }
+
+// Visible Columns
+function renderVisibleColsList(){
+  // Build combined list: ALL_COLUMNS + customColumns
+  const allCols=[...ALL_COLUMNS];
+  for(const cc of customColumns){
+    if(!allCols.find(c=>c.key===cc.key)) allCols.push({key:cc.key,label:cc.name,std:false});
+  }
+  document.getElementById('visibleColsList').innerHTML=allCols.map(c=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.88rem;">
+      <input type="checkbox" ${visibleCols.includes(c.key)?'checked':''} onchange="toggleVisibleCol('${escHTML(c.key)}')">
+      <span style="flex:1;">${escHTML(c.label)} ${c.std?'<span style="color:#9CA3AF;font-size:.75rem;">(standard)</span>':''}</span>
+    </label>
+  `).join('');
+}
+function toggleVisibleCol(key){
+  if(visibleCols.includes(key)) visibleCols=visibleCols.filter(v=>v!==key);
+  else visibleCols.push(key);
+  renderTableHeader();
+  filterLeads();
+  renderLeadsTable();
+}
+
+// Custom Columns
+function renderCustomColumnsList(){
+  document.getElementById('customColumnsList').innerHTML=customColumns.length
+    ? customColumns.map((cc,i)=>`<div class="customColItem"><span>${escHTML(cc.name)} <code style="color:var(--text2);font-size:.75rem;">key: ${escHTML(cc.key)}</code></span><button class="iconBtn delete" onclick="removeCustomColumn(${i})" title="Remove">🗑️</button></div>`).join('')
+    : '<div style="color:#9CA3AF;font-size:.85rem;">No custom columns yet. Add one to display it on the dashboard table.</div>';
+}
+function addCustomColumn(){
+  const name=document.getElementById('newCustomCol').value.trim();
+  if(!name){ showToast('Enter a column name','error'); return; }
+  const key=slugifyKey(name);
+  if(customColumns.find(cc=>cc.key===key)){ showToast('Column already exists','error'); return; }
+  customColumns.push({key,name});
+  // Also add to colMap so sheet data can map to it
+  if(!colMap[key]) colMap[key]=name;
+  // Auto-show the new column on dashboard
+  if(!visibleCols.includes(key)) visibleCols.push(key);
+  document.getElementById('newCustomCol').value='';
+  renderCustomColumnsList();
+  renderVisibleColsList();
+  renderTableHeader();
+  filterLeads();
+  renderLeadsTable();
+  showToast('Column added! Save settings to persist.','success');
+}
+function removeCustomColumn(i){
+  const removed=customColumns[i];
+  customColumns.splice(i,1);
+  // Also remove from visible columns
+  if(removed) visibleCols=visibleCols.filter(v=>v!==removed.key);
+  renderCustomColumnsList();
+  renderVisibleColsList();
+  renderTableHeader();
+  filterLeads();
+  renderLeadsTable();
+}
+
+// Statuses
+function renderStatusList(){
+  document.getElementById('statusList').innerHTML=statuses.map((s,i)=>`<div class="statusItem"><span class="colorDot" style="background:${s.dot||s.color||'#ccc'}"></span><span style="flex:1;font-weight:500;font-size:.9rem;">${escHTML(s.emoji||'')} ${escHTML(s.label||s.name)}</span><input type="color" value="${s.dot||s.color||'#cccccc'}" onchange="updateStatusColor(${i},this.value)" style="width:32px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">${statuses.length>1?`<button class="iconBtn delete" onclick="removeStatus(${i})" title="Remove">🗑️</button>`:''}</div>`).join('');
+}
+function updateStatusColor(i,color){ if(statuses[i].dot!==undefined) statuses[i].dot=color; if(statuses[i].color!==undefined) statuses[i].color=color; }
+function removeStatus(i){ if(statuses.length<=1) return; statuses.splice(i,1); renderStatusList(); }
+function addStatus(){
+  const name=document.getElementById('newStatusName').value.trim();
+  const color=document.getElementById('newStatusColor').value;
+  if(!name) return;
+  const key=name.toLowerCase().replace(/\s+/g,'_');
+  statuses.push({key,emoji:'',label:name,bg:color+'20',tx:color,dot:color});
+  document.getElementById('newStatusName').value='';
+  renderStatusList();
+}
+
+// Garden Sizes
+function renderGardenSizes(){
+  document.getElementById('gardenSizesList').innerHTML=gardenSizes.map((g,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;"><span>${escHTML(g)}</span><button class="iconBtn delete" onclick="removeGardenSize(${i})" title="Remove">🗑️</button></div>`).join('');
+}
+function removeGardenSize(i){ gardenSizes.splice(i,1); renderGardenSizes(); }
+function addGardenSize(){ const v=document.getElementById('newGardenSize').value.trim(); if(!v) return; gardenSizes.push(v); document.getElementById('newGardenSize').value=''; renderGardenSizes(); }
+
+// Form Fields
+function renderFormFields(){
+  document.getElementById('formFieldsList').innerHTML=formFields.map((f,i)=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.88rem;"><input type="checkbox" ${f.on?'checked':''} onchange="toggleField(${i})"><span style="flex:1;">${escHTML(f.label)} ${f.req?'*':''}</span></label>`).join('');
+}
+function toggleField(i){ formFields[i].on=!formFields[i].on; }
+
+// Save Settings
+async function saveAllSettings(){
+  const btn=event.target;
+  btn.disabled=true; btn.textContent='Saving...';
+  try{
+    for(const key of Object.keys(colMap)){ const el=document.getElementById('colmap_'+key); if(el&&el.value.trim()) colMap[key]=el.value.trim(); }
+    await saveConfig('col_map',colMap);
+    await saveConfig('column_mapping',colMap);
+    await saveConfig('statuses',statuses);
+    await saveConfig('garden_sizes',gardenSizes);
+    await saveConfig('fields',formFields);
+    await saveConfig('form_fields',formFields);
+    await saveConfig('custom_columns',customColumns);
+    await saveConfig('visible_columns',visibleCols);
+    const apiKey=document.getElementById('sheetApiKey').value.trim();
+    const sheetId=document.getElementById('sheetId').value.trim();
+    const tab=document.getElementById('sheetTab').value.trim()||'Sheet1';
+    const autoSync=document.getElementById('autoSyncToggle').checked;
+    if(apiKey) await saveConfig('sheets_key',apiKey);
+    if(sheetId) await saveConfig('sheet_id',sheetId);
+    await saveConfig('sheet_tab',tab);
+    await saveConfig('auto_sync',autoSync?'true':'false');
+    // Refresh table to show new columns
+    renderTableHeader();
+    filterLeads();
+    renderLeadsTable();
+    showToast('Settings saved!','success');
+  }catch(e){ showToast('Failed to save: '+e.message,'error'); }
+  btn.disabled=false; btn.textContent='💾 Save Settings';
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer=null;
+function showToast(msg,type='success'){
+  const wrap=document.getElementById('toastWrap');
+  const toast=document.getElementById('toast');
+  toast.textContent=msg;
+  toast.className='toast toast'+(type==='error'?'Error':'Success');
+  wrap.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>wrap.classList.remove('show'),3200);
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+window.addEventListener('DOMContentLoaded',()=>{
+  if(checkSession()){
+    document.getElementById('loginPage').style.display='none';
+    document.getElementById('app').classList.add('active');
+    document.getElementById('userAvatar').textContent=initials(session.email);
+    document.getElementById('userName').textContent=session.email.split('@')[0];
+    if(session.role==='admin'||session.is_owner) document.getElementById('settingsTabBtn').style.display='';
+    initApp();
+  }else{
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+});
+</script>
+</body>
+</html>
