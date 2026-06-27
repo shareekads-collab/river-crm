@@ -12,7 +12,7 @@ A single-file CRM tool with Supabase backend, Google Sheets sync, lead managemen
 - **Dashboard** — Pipeline tabs, sortable columns, search, custom columns
 - **Analytics** — Full metrics, charts, conversion funnel
 - **Settings** — Column mapping, visible columns, user management
-- **Google Sheets Sync** — Auto-import leads, sync columns, detect new/deleted columns
+- **Google Sheets Sync** — Auto-import leads, sync columns, detect new/deleted columns, sync status values
 - **Auth** — Email-only login, role-based access (admin/user)
 
 ## Deploy to Vercel

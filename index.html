@@ -446,8 +446,7 @@ let statuses = [...DEFAULT_STATUSES];
 let colMap = {...DEFAULT_COL_MAP};
 let gardenSizes = ['50 - 150 m\u00B2','150 - 250 m\u00B2','250 - 300 m\u00B2','300+ m\u00B2'];
 let formFields = [{key:'name',label:'Lead Name',req:true,on:true},{key:'phone',label:'Phone',req:true,on:true},{key:'date',label:'Entry Date',req:false,on:true},{key:'garden',label:'Garden Size',req:false,on:true},{key:'city',label:'City',req:false,on:true},{key:'addr',label:'Address',req:false,on:true},{key:'comments',label:'Comments',req:false,on:true},{key:'action',label:'Next Action',req:false,on:false},{key:'visit',label:'Visit Date',req:false,on:false}];
-let customColumns = []; // {key, name}
-// ALL possible columns that can appear on dashboard table
+let customColumns = [];
 const ALL_COLUMNS = [
   {key:'date',label:'Date',std:true},
   {key:'name',label:'Name',std:true},
@@ -461,7 +460,7 @@ const ALL_COLUMNS = [
   {key:'visit_date',label:'Visit Date',std:true},
   {key:'action',label:'Next Action',std:true},
 ];
-let visibleCols = ['date','name','phone','garden','city','status','visit_date']; // default visible
+let visibleCols = ['date','name','phone','garden','city','status','visit_date'];
 let activePipeline = 'all';
 let searchQuery = '';
 let pollTimer = null;
@@ -479,19 +478,12 @@ function initials(name){ return (name||'').split(' ').map(w=>w[0]).join('').toUp
 function nowTime(){ return new Date().toLocaleTimeString('en-US',{hour12:false}); }
 function isStandardField(key){ return STANDARD_FIELDS.includes(key); }
 function slugifyKey(name){ return 'col_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
-
-// Get extra data object from a lead
 function getExtraData(lead){
   if(!lead||!lead.extra_data) return {};
   try{ return JSON.parse(lead.extra_data)||{}; }catch(e){ return {}; }
 }
-// Strip all non-digits from phone
 function cleanPhone(p){
   return (p||'').replace(/\D/g,'');
-}
-// Get all display columns (custom columns that should show in table)
-function getDisplayColumns(){
-  return customColumns.filter(cc => cc && cc.key && cc.name);
 }
 
 // ============================================================
@@ -599,22 +591,17 @@ async function loadConfig(){
   if(config.statuses){ try{ statuses=JSON.parse(config.statuses); }catch(e){} }
   if(config.col_map){ try{ colMap=JSON.parse(config.col_map); }catch(e){} }
   if(config.column_mapping && Object.keys(colMap).length <= 8){ try{ const cm=JSON.parse(config.column_mapping); if(Object.keys(cm).length > Object.keys(colMap).length) colMap=cm; }catch(e){} }
-  // Ensure all standard fields are in colMap (merge with defaults)
-  for(const [key,val] of Object.entries(DEFAULT_COL_MAP)){
-    if(!colMap[key]) colMap[key]=val;
-  }
+  for(const [key,val] of Object.entries(DEFAULT_COL_MAP)){ if(!colMap[key]) colMap[key]=val; }
   if(config.garden_sizes){ try{ gardenSizes=JSON.parse(config.garden_sizes); }catch(e){} }
   if(config.fields){ try{ formFields=JSON.parse(config.fields); }catch(e){} }
   if(config.form_fields){ try{ formFields=JSON.parse(config.form_fields); }catch(e){} }
   if(config.custom_columns){ try{ customColumns=JSON.parse(config.custom_columns)||[]; }catch(e){ customColumns=[]; } }
   else{ customColumns=[]; }
-  // Auto-sync: ensure any non-standard colMap keys are in customColumns
   for(const [key, colName] of Object.entries(colMap)){
     if(!isStandardField(key) && !customColumns.find(cc=>cc.key===key)){
       customColumns.push({key, name: colName});
     }
   }
-  // Load visible columns
   if(config.visible_columns){ try{ visibleCols=JSON.parse(config.visible_columns)||['date','name','phone','garden','city','status','visit_date']; }catch(e){} }
   else{ visibleCols=['date','name','phone','garden','city','status','visit_date']; }
 }
@@ -730,7 +717,6 @@ function renderPipelineBar(){
   }).join('');
 }
 
-// Build status options HTML for select dropdowns
 function buildStatusOptionsHTML(selectedKey){
   return statuses.map(s=>{
     const sk=s.key||s.id||'', sl=s.label||s.name||'';
@@ -738,11 +724,9 @@ function buildStatusOptionsHTML(selectedKey){
   }).join('');
 }
 
-// Dynamic table header driven by visibleCols
 function renderTableHeader(){
   let html='';
   for(const key of visibleCols){
-    // Find label from ALL_COLUMNS or customColumns
     const colDef=ALL_COLUMNS.find(c=>c.key===key);
     const ccDef=customColumns.find(c=>c.key===key);
     const label=colDef?colDef.label:(ccDef?ccDef.name:key);
@@ -750,16 +734,13 @@ function renderTableHeader(){
   }
   html+=`<th>Actions</th>`;
   document.getElementById('leadsTableHead').innerHTML=html;
-  // Restore sort indicator
   if(sortCol){
     const arrow=document.getElementById('sort_'+sortCol);
     if(arrow){ arrow.textContent=sortAsc?'↑':'↓'; arrow.style.opacity='1'; arrow.closest('th').classList.add('sort-active'); }
   }
 }
 
-// Render a single table cell based on column key
 function renderTableCell(lead,extra,colKey){
-  // Special rendering for certain columns
   if(colKey==='name') return `<td><div class="leadName">${escHTML(lead.name)}</div></td>`;
   if(colKey==='phone') return `<td><div class="leadPhone">${escHTML(cleanPhone(lead.phone))||'—'}</div></td>`;
   if(colKey==='city') return `<td><div class="leadLocation">${escHTML(lead.city||'—')}</div>${lead.addr?`<div class="leadAddr">${escHTML(lead.addr)}</div>`:''}</td>`;
@@ -767,7 +748,6 @@ function renderTableCell(lead,extra,colKey){
     const st=getStatusObj(lead.status);
     return `<td><div class="statusWrap" id="sw_${lead.id}"><span class="statusPill" style="background:${st.bg};color:${st.tx}" onclick="toggleStatusDropdown(${lead.id},event)"><span class="statusDot" style="background:${st.dot}"></span>${escHTML(st.emoji)} ${escHTML(st.label)}</span><div class="statusDropdown" id="sd_${lead.id}"></div></div></td>`;
   }
-  // Generic: standard fields from lead, custom fields from extra_data
   const val=isStandardField(colKey)?(lead[colKey]||''):(extra[colKey]||'');
   return `<td>${escHTML(val)||'—'}</td>`;
 }
@@ -780,10 +760,7 @@ function renderLeadsTable(){
   tbody.innerHTML=leads.map(lead=>{
     let extra=getExtraData(lead);
     let html=`<tr>`;
-    for(const colKey of visibleCols){
-      html+=renderTableCell(lead,extra,colKey);
-    }
-    // Actions column always last
+    for(const colKey of visibleCols){ html+=renderTableCell(lead,extra,colKey); }
     html+=`<td><div class="actionsCell"><button class="iconBtn" onclick="openEditLeadModal(${lead.id})" title="Edit">✏️</button><button class="iconBtn delete" onclick="deleteLead(${lead.id})" title="Delete">🗑️</button></div></td>`;
     html+=`</tr>`;
     return html;
@@ -798,8 +775,6 @@ function updateLiveBadge(){
   document.getElementById('liveText').textContent=`Live · ${allLeads.length} leads · ${nowTime()}`;
   document.title=`River CRM · ${allLeads.length} leads`;
 }
-
-// Get unique cities for location dropdown
 function getUniqueCities(){
   const cities=new Set();
   allLeads.forEach(l=>{ if(l.city) cities.add(l.city); });
@@ -838,9 +813,7 @@ async function changeStatus(leadId,newStatus,event){
 // ============================================================
 async function addLead(data){
   const key=buildKey(data.name,data.phone);
-  // Clean phone - strip all non-digits
   const cleanPhoneNum=cleanPhone(data.phone);
-  // Separate standard fields from extra fields
   const payload={name:data.name,phone:cleanPhoneNum,date:data.date||'',garden:data.garden||'',city:data.city||'',addr:data.addr||'',status:data.status||'new',comments:data.comments||'',visit_date:data.visit_date||'',action:data.action||'',sheet_row_key:key,source:data.source||'manual'};
   const extra={};
   for(const cc of customColumns){ if(data[cc.key]!==undefined&&data[cc.key]!=='') extra[cc.key]=data[cc.key]; }
@@ -880,7 +853,28 @@ function parseHeaders(rows){
   return rows[0].map((h,i)=>({index:i,header:(h||'').trim()}));
 }
 
-// Detect new headers from the sheet and add them to colMap + customColumns
+// Convert sheet status text (e.g. "New Lead") to tool status key (e.g. "new")
+function normalizeStatus(val){
+  if(!val) return 'new';
+  const v=val.toString().toLowerCase().trim();
+  // Direct key match
+  const direct=statuses.find(s=>s.key===v||s.id===v);
+  if(direct) return direct.key||direct.id;
+  // Label match
+  const byLabel=statuses.find(s=>(s.label||s.name||'').toLowerCase()===v);
+  if(byLabel) return byLabel.key||byLabel.id;
+  // Partial label match
+  const partial=statuses.find(s=>(s.label||s.name||'').toLowerCase().includes(v));
+  if(partial) return partial.key||partial.id;
+  // Emoji-stripped match
+  const noEmoji=v.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu,'').trim();
+  if(noEmoji){
+    const emMatch=statuses.find(s=>(s.label||s.name||'').toLowerCase().replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu,'').trim()===noEmoji);
+    if(emMatch) return emMatch.key||emMatch.id;
+  }
+  return 'new';
+}
+
 function detectNewHeaders(headers){
   const currentHeaders=Object.values(colMap);
   const newHeaders=headers.filter(h=>h.header&&!currentHeaders.includes(h.header)&&h.header!=='ID');
@@ -891,7 +885,6 @@ function detectNewHeaders(headers){
       if(!colMap[key]){
         colMap[key]=nh.header;
         addedAny=true;
-        // Also add to customColumns so it shows on dashboard
         if(!customColumns.find(cc=>cc.key===key)){
           customColumns.push({key,name:nh.header});
         }
@@ -902,12 +895,10 @@ function detectNewHeaders(headers){
   return addedAny;
 }
 
-// Auto-sync: ensure ALL columns present in the sheet appear on the dashboard
 function syncSheetColsToDashboard(headers){
   let changed=false;
   for(const h of headers){
     if(!h.header) continue;
-    // Find which colMap key this header maps to
     for(const [key,colName] of Object.entries(colMap)){
       if(colName===h.header && !visibleCols.includes(key)){
         visibleCols.push(key);
@@ -925,7 +916,8 @@ function mapRowSplit(row,headers){
   for(const [key,colName] of Object.entries(colMap)){
     const h=headers.find(h=>h.header===colName);
     if(h){
-      const val=(row[h.index]||'').trim();
+      let val=(row[h.index]||'').trim();
+      if(key==='status') val=normalizeStatus(val);
       if(isStandardField(key)) standard[key]=val;
       else extra[key]=val;
     }
@@ -939,7 +931,6 @@ async function processSheetRows(){
   const headers=parseHeaders(rows);
   const hadNewCols=detectNewHeaders(headers);
 
-  // Save updated colMap and customColumns if new columns were found
   if(hadNewCols){
     try{
       await saveConfig('col_map',colMap);
@@ -948,32 +939,32 @@ async function processSheetRows(){
     }catch(e){ console.warn('Failed to save new colMap:',e); }
   }
 
-  // First: update existing leads with data from new columns (clean phone from sheet)
+  // Update existing leads with any new column data
   let updatedCount=0;
   for(const row of rows.slice(1)){
     const mapped=mapRowSplit(row,headers);
     if(!mapped.standard.name&&!mapped.standard.phone) continue;
-    // Clean phone from sheet data
     mapped.standard.phone=cleanPhone(mapped.standard.phone);
-    // Match by sheet_row_key OR by cleaned phone digits
+    const key=buildKey(mapped.standard.name,mapped.standard.phone);
     const cleanSheetPhone=normPhone(mapped.standard.phone||'');
     const existing=allLeads.find(l=>{
-      if(l.sheet_row_key===buildKey(mapped.standard.name,mapped.standard.phone)) return true;
-      // Match by normalized phone (handles old keys with +, letters, etc.)
+      if(l.sheet_row_key===key) return true;
       const cleanDbPhone=normPhone(l.phone||'');
       return cleanDbPhone && cleanSheetPhone && cleanDbPhone===cleanSheetPhone;
     });
     if(existing){
-      // Update extra_data for custom columns
       let extra=getExtraData(existing);
       let hasUpdate=false;
       for(const [ek,ev] of Object.entries(mapped.extra)){
         if(ev && (!extra[ek]||extra[ek]!==ev)){ extra[ek]=ev; hasUpdate=true; }
       }
-      // Update standard fields that come from sheet (like source)
+      // Update standard fields including status
       let standardUpdate={};
       for(const [sk,sv] of Object.entries(mapped.standard)){
-        if(isStandardField(sk) && sv && (!existing[sk]||existing[sk]==='')){
+        if(!sv) continue;
+        if(sk==='status'){
+          if(existing.status!==sv){ standardUpdate[sk]=sv; hasUpdate=true; }
+        }else if(isStandardField(sk) && (!existing[sk]||existing[sk]==='')){
           standardUpdate[sk]=sv;
           hasUpdate=true;
         }
@@ -983,7 +974,6 @@ async function processSheetRows(){
           const updatePayload={...standardUpdate};
           if(Object.keys(extra).length>0) updatePayload.extra_data=JSON.stringify(extra);
           await sbPatch('leads','id=eq.'+existing.id,updatePayload);
-          // Update local lead object
           Object.assign(existing,standardUpdate);
           if(updatePayload.extra_data) existing.extra_data=updatePayload.extra_data;
           updatedCount++;
@@ -1009,7 +999,6 @@ async function processSheetRows(){
     removedAny=true;
   }
 
-  // Auto-sync: ensure ALL sheet columns (standard + custom) are visible on dashboard
   const visChanged=syncSheetColsToDashboard(headers);
   if(hadNewCols || removedAny || visChanged){
     renderTableHeader();
@@ -1023,18 +1012,16 @@ async function processSheetRows(){
     }catch(e){}
   }
 
-  // Second: insert new leads
+  // Insert new leads
   const seenKeys=new Set();
   const toInsert=[];
   for(const row of rows.slice(1)){
     const mapped=mapRowSplit(row,headers);
     if(!mapped.standard.name&&!mapped.standard.phone) continue;
-    // Clean phone from sheet data
     mapped.standard.phone=cleanPhone(mapped.standard.phone);
     const key=buildKey(mapped.standard.name,mapped.standard.phone);
     if(seenKeys.has(key)) continue;
     seenKeys.add(key);
-    // Match by sheet_row_key OR by cleaned phone digits
     const exists=allLeads.find(l=>{
       if(l.sheet_row_key===key) return true;
       return normPhone(l.phone||'')===normPhone(mapped.standard.phone||'');
@@ -1049,8 +1036,8 @@ async function processSheetRows(){
         addr:mapped.standard.addr||'',
         status:mapped.standard.status||'new',
         comments:mapped.standard.comments||'',
-        sheet_row_key:key,
-        source:'sheet'
+        source:mapped.standard.source||'sheet',
+        sheet_row_key:key
       };
       if(Object.keys(mapped.extra).length>0) payload.extra_data=JSON.stringify(mapped.extra);
       toInsert.push(payload);
@@ -1064,13 +1051,11 @@ async function processSheetRows(){
     showToast(`${toInsert.length} new leads imported from sheet`,'success');
   }
 
-  // Refresh leads list
   await loadLeads();
   renderDashboard();
   return toInsert.length;
 }
 
-// Manual column sync: fetch sheet headers, add new columns, remove deleted ones
 async function syncColumnsFromSheet(){
   const btn=event.target;
   const origText=btn.textContent;
@@ -1081,35 +1066,24 @@ async function syncColumnsFromSheet(){
     const headers=parseHeaders(rows);
     const sheetHeaderNames=headers.map(h=>h.header).filter(h=>h);
 
-    // 1. Add new columns from sheet
     const hadNewCols=detectNewHeaders(headers);
 
-    // 2. Remove columns from tool that are NOT in sheet anymore
     let removedAny=false;
     const keysToRemove=[];
     for(const [key,colName] of Object.entries(colMap)){
-      // Never remove standard mapped columns
       if(isStandardField(key)) continue;
-      // If this column name is not in the sheet headers, mark for removal
-      if(!sheetHeaderNames.includes(colName)){
-        keysToRemove.push(key);
-      }
+      if(!sheetHeaderNames.includes(colName)) keysToRemove.push(key);
     }
     for(const key of keysToRemove){
-      // Remove from colMap
       delete colMap[key];
-      // Remove from customColumns
       const ccIdx=customColumns.findIndex(cc=>cc.key===key);
       if(ccIdx!==-1) customColumns.splice(ccIdx,1);
-      // Remove from visibleCols
       visibleCols=visibleCols.filter(v=>v!==key);
       removedAny=true;
     }
 
-    // 3. Sync ALL sheet columns to dashboard visible columns
     syncSheetColsToDashboard(headers);
 
-    // 4. Save everything
     if(hadNewCols || removedAny){
       await saveConfig('col_map',colMap);
       await saveConfig('column_mapping',colMap);
@@ -1117,7 +1091,6 @@ async function syncColumnsFromSheet(){
     }
     await saveConfig('visible_columns',visibleCols);
 
-    // 5. Re-render everything
     renderSettings();
     renderTableHeader();
     filterLeads();
@@ -1214,7 +1187,6 @@ function getFormFieldsHTML(prefix='',leadData=null){
       html+=`<div class="formGroup"><label for="${id}">${escHTML(f.label)}${f.req?' *':''}</label><input type="${inputType}" id="${id}" placeholder="${escHTML(f.label)}" value="${escHTML(val)}"${phoneAttrs}></div>`;
     }
   }
-  // Custom columns
   if(customColumns.length){
     const extra=leadData?getExtraData(leadData):{};
     html+='<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;"><h4 style="font-size:.85rem;color:var(--text2);margin-bottom:10px;">Custom Columns</h4>';
@@ -1302,7 +1274,6 @@ async function submitEditLead(id){
     comments:document.getElementById('edit_comments').value.trim(),
     source:document.getElementById('edit_source').value.trim()
   };
-  // Collect custom columns into extra_data
   const lead=allLeads.find(l=>l.id===id);
   let extra=lead?getExtraData(lead):{};
   let hasExtra=false;
@@ -1359,7 +1330,6 @@ function renderAnalytics(){
     return;
   }
   const total=allLeads.length;
-  // KPIs
   document.getElementById('a_totalLeads').textContent=total;
   const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
   const newWeek=allLeads.filter(l=>new Date(l.created_at)>weekAgo).length;
@@ -1377,16 +1347,11 @@ function renderAnalytics(){
   document.getElementById('a_lostRate').textContent=lostRate+'%';
   document.getElementById('a_lostBar').style.width=lostRate+'%';
 
-  // Status breakdown
   renderBarChart('a_statusChart',countByField(allLeads,'status',(v)=>{ const s=getStatusObj(v); return s.label||v; }));
-  // Garden distribution
   renderBarChart('a_gardenChart',countByField(allLeads,'garden'),true);
-  // City breakdown
   renderBarChart('a_cityChart',countByField(allLeads,'city'),true);
-  // Source analysis
   renderBarChart('a_sourceChart',countByField(allLeads,'source'),true);
 
-  // Custom columns analysis (up to 2)
   const dispCustomCols=customColumns.slice(0,2);
   for(let i=0;i<2;i++){
     const card=document.getElementById('a_customCard'+(i+1));
@@ -1400,13 +1365,10 @@ function renderAnalytics(){
     }
   }
 
-  // Timeline
   renderTimelineChart();
-  // Funnel
   renderFunnelChart();
 }
 
-// Count leads by a field, skip empty values
 function countByField(leads,field,labelFn){
   const counts={};
   leads.forEach(l=>{ const v=l[field]; if(v){ counts[v]=(counts[v]||0)+1; } });
@@ -1418,7 +1380,6 @@ function countByExtraField(leads,key){
   return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>({label:k,count:n}));
 }
 
-// Render a horizontal bar chart
 function renderBarChart(containerId,items,skipEmptyLabel){
   const el=document.getElementById(containerId);
   if(!el) return;
@@ -1434,7 +1395,6 @@ function renderBarChart(containerId,items,skipEmptyLabel){
   `).join('');
 }
 
-// Timeline chart - leads by date
 function renderTimelineChart(){
   const el=document.getElementById('a_timelineChart');
   if(!el) return;
@@ -1455,7 +1415,6 @@ function renderTimelineChart(){
   `).join('');
 }
 
-// Conversion funnel
 function renderFunnelChart(){
   const el=document.getElementById('a_funnelChart');
   if(!el) return;
@@ -1488,7 +1447,6 @@ function renderSettings(){
   document.getElementById('sheetId').value=config.sheet_id||'';
   document.getElementById('sheetTab').value=config.sheet_tab||'';
   document.getElementById('autoSyncToggle').checked=config.auto_sync==='true';
-  // Column mapping
   document.getElementById('colMapInputs').innerHTML=Object.entries(colMap).map(([key,val])=>`<div class="formRow" style="margin-bottom:8px;"><input type="text" value="${escHTML(key)}" disabled style="background:#F9FAFB;"><input type="text" id="colmap_${escHTML(key)}" value="${escHTML(val)}" placeholder="Sheet column header"></div>`).join('');
   renderVisibleColsList();
   renderCustomColumnsList();
@@ -1514,9 +1472,7 @@ async function addUser(){
 }
 function toggleAutoSync(){ config.auto_sync=document.getElementById('autoSyncToggle').checked?'true':'false'; }
 
-// Visible Columns
 function renderVisibleColsList(){
-  // Build combined list: ALL_COLUMNS + customColumns
   const allCols=[...ALL_COLUMNS];
   for(const cc of customColumns){
     if(!allCols.find(c=>c.key===cc.key)) allCols.push({key:cc.key,label:cc.name,std:false});
@@ -1536,7 +1492,6 @@ function toggleVisibleCol(key){
   renderLeadsTable();
 }
 
-// Custom Columns
 function renderCustomColumnsList(){
   document.getElementById('customColumnsList').innerHTML=customColumns.length
     ? customColumns.map((cc,i)=>`<div class="customColItem"><span>${escHTML(cc.name)} <code style="color:var(--text2);font-size:.75rem;">key: ${escHTML(cc.key)}</code></span><button class="iconBtn delete" onclick="removeCustomColumn(${i})" title="Remove">🗑️</button></div>`).join('')
@@ -1548,9 +1503,7 @@ function addCustomColumn(){
   const key=slugifyKey(name);
   if(customColumns.find(cc=>cc.key===key)){ showToast('Column already exists','error'); return; }
   customColumns.push({key,name});
-  // Also add to colMap so sheet data can map to it
   if(!colMap[key]) colMap[key]=name;
-  // Auto-show the new column on dashboard
   if(!visibleCols.includes(key)) visibleCols.push(key);
   document.getElementById('newCustomCol').value='';
   renderCustomColumnsList();
@@ -1563,7 +1516,6 @@ function addCustomColumn(){
 function removeCustomColumn(i){
   const removed=customColumns[i];
   customColumns.splice(i,1);
-  // Also remove from visible columns
   if(removed) visibleCols=visibleCols.filter(v=>v!==removed.key);
   renderCustomColumnsList();
   renderVisibleColsList();
@@ -1572,7 +1524,6 @@ function removeCustomColumn(i){
   renderLeadsTable();
 }
 
-// Statuses
 function renderStatusList(){
   document.getElementById('statusList').innerHTML=statuses.map((s,i)=>`<div class="statusItem"><span class="colorDot" style="background:${s.dot||s.color||'#ccc'}"></span><span style="flex:1;font-weight:500;font-size:.9rem;">${escHTML(s.emoji||'')} ${escHTML(s.label||s.name)}</span><input type="color" value="${s.dot||s.color||'#cccccc'}" onchange="updateStatusColor(${i},this.value)" style="width:32px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">${statuses.length>1?`<button class="iconBtn delete" onclick="removeStatus(${i})" title="Remove">🗑️</button>`:''}</div>`).join('');
 }
@@ -1588,20 +1539,17 @@ function addStatus(){
   renderStatusList();
 }
 
-// Garden Sizes
 function renderGardenSizes(){
   document.getElementById('gardenSizesList').innerHTML=gardenSizes.map((g,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;"><span>${escHTML(g)}</span><button class="iconBtn delete" onclick="removeGardenSize(${i})" title="Remove">🗑️</button></div>`).join('');
 }
 function removeGardenSize(i){ gardenSizes.splice(i,1); renderGardenSizes(); }
 function addGardenSize(){ const v=document.getElementById('newGardenSize').value.trim(); if(!v) return; gardenSizes.push(v); document.getElementById('newGardenSize').value=''; renderGardenSizes(); }
 
-// Form Fields
 function renderFormFields(){
   document.getElementById('formFieldsList').innerHTML=formFields.map((f,i)=>`<label style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.88rem;"><input type="checkbox" ${f.on?'checked':''} onchange="toggleField(${i})"><span style="flex:1;">${escHTML(f.label)} ${f.req?'*':''}</span></label>`).join('');
 }
 function toggleField(i){ formFields[i].on=!formFields[i].on; }
 
-// Save Settings
 async function saveAllSettings(){
   const btn=event.target;
   btn.disabled=true; btn.textContent='Saving...';
@@ -1623,7 +1571,6 @@ async function saveAllSettings(){
     if(sheetId) await saveConfig('sheet_id',sheetId);
     await saveConfig('sheet_tab',tab);
     await saveConfig('auto_sync',autoSync?'true':'false');
-    // Refresh table to show new columns
     renderTableHeader();
     filterLeads();
     renderLeadsTable();
