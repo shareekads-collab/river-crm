@@ -1,0 +1,14 @@
+{
+  "name": "river-crm",
+  "version": "1.0.0",
+  "description": "River CRM - A single-file CRM tool with Supabase backend, Google Sheets sync, lead management, and role-based access control",
+  "scripts": {
+    "deploy": "vercel --prod"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shareekads-collab/river-crm.git"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/shareekads-collab/river-crm#readme"
+}
